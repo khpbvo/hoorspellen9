@@ -1,0 +1,5 @@
+root - DEBUG - This is a debug message
+root - DEBUG - This is a debug message
+root - DEBUG - Starting search execution
+root - DEBUG - Executing query: SELECT auteur, titel, regie, datum, omroep, bandnr, vertaling, duur, bewerking, genre, productie, themareeks, delen, bijzverm, taal FROM hoorspelen WHERE auteur LIKE ? ORDER BY id ASC LIMIT ? OFFSET ?
+root - DEBUG - Query executed. Number of results fetched: 10
