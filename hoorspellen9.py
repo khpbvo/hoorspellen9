@@ -4,7 +4,6 @@ import sqlite3
 import os
 import csv
 import datetime
-from email.message import EmailMessage
 import certifi
 from google.oauth2.credentials import Credentials
 from google_auth_oauthlib.flow import InstalledAppFlow
@@ -22,11 +21,10 @@ from google.auth.transport.requests import Request
 import pickle
 import os.path
 import mimetypes
-import pdb
 import logging
 import re
 import difflib
-import curses
+
 
 
 os.environ['SSL_CERT_FILE'] = certifi.where()
@@ -92,6 +90,7 @@ def main_menu():
             key = msvcrt.getch()  # Fetch the actual key code
 
         if key == b'\x1b':  # Escape key
+            clear_screen()
             print("\nBackup aan het maken, moment geduld.", end='', flush=True)
             email_message = create_message_with_attachment("sjefsdatabasebackups@gmail.com", "sjefsdatabasebackups@gmail.com", "Hoorspelen backup", "De backup van de hoorspelen", csv_path=export_function(db_file))
             send_message(service, "me", email_message)
@@ -419,17 +418,80 @@ def bewerk_hoorspel(db_file):
     os.system('cls' if os.name == 'nt' else 'clear')  # Clear the screen again before returning to the menu
 
 # Other parts of your script remain unchanged...
-
-# Clears the terminal screen
-def clear_screen():
-    os.system('cls' if os.name == 'nt' else 'clear')
-
-# List of valid fields for the database
 valid_fields = [
     "auteur", "titel", "regie", "datum", "omroep", "bandnr",
     "vertaling", "duur", "bewerking", "genre", "productie",
     "themareeks", "delen", "bijzverm", "taal"
 ]
+
+
+# Clears the terminal screen
+def clear_screen():
+    os.system('cls' if os.name == 'nt' else 'clear')
+
+def save_changes_to_database(db_file, record_id, field_name, new_value):
+    print("save changes to database")
+    conn = sqlite3.connect(db_file)
+    cursor = conn.cursor()
+    query = f"UPDATE hoorspelen SET {field_name} = ? WHERE id = ?"
+    try:
+        cursor.execute(query, (new_value, record_id))  # Correct order of parameters
+        conn.commit()
+    except sqlite3.Error as e:
+        print(f"A SQLite error occurred: {e}")
+    finally:
+        conn.close()
+
+def edit_current_field(db_file, current_record, current_attribute, attribute_names, results):
+    clear_screen()
+    print(f"\nEdit mode: {attribute_names[current_attribute]}. Current value: {results[current_record][current_attribute]}")
+    print("Type the new value and press ENTER. Press ESCAPE to cancel.")
+    
+    # Initialize a blank string for the new value
+    new_value = []
+
+    while True:
+        key = msvcrt.getch()
+        if key == b'\r':  # Enter key
+            new_value_str = ''.join(new_value)  # Convert list of characters to a string
+            valid_fields = ['auteur', 'titel', 'regie', 'datum', 'omroep', 'bandnr', 'vertaling', 'duur', 'bewerking', 'genre', 'productie', 'themareeks', 'delen', 'bijzverm', 'taal']
+
+            if new_value_str:  # If the new value is not empty
+                field_name = attribute_names[current_attribute]
+                if field_name in valid_fields:
+                    # Perform the database update
+                    print("Before calling save_changes_to_database")
+                    save_changes_to_database(db_file, results[current_record][0], field_name, new_value_str)
+                    clear_screen()
+                    print("\nChanges saved.")
+                else:
+                    print(f"Invalid field: {field_name}")
+            break
+        elif key == b'\x1b':  # Escape key
+            clear_screen()
+            print("\nEdit canceled.")
+            break
+        elif key == b'\x08':  # Backspace
+            if new_value:
+                new_value.pop()
+                print("\b \b", end='', flush=True)  # Move back, print space, move back again
+        else:
+            try:
+                char = key.decode()
+                new_value.append(char)
+                print(char, end='', flush=True)  # Display the character
+            except UnicodeDecodeError:
+                continue  # Ignore undecodable characters
+
+    input("\nPress any key to continue...")  # Wait for user to acknowledge before proceeding
+    clear_screen()
+    
+    # Clear screen and re-print the updated record for continuity
+    clear_screen()
+    for index, attribute in enumerate(attribute_names):
+        print(f"   {attribute}: {results[current_record][index]}")
+    # Position the cursor back to the start of the line where the selected attribute is
+    print(f"\033[{len(attribute_names) - current_attribute}A\r-> {attribute_names[current_attribute]}: {results[current_record][current_attribute]}\033[K", end='', flush=True)
 
 # Corrects a field name based on the list of valid fields
 def correct_field_name(field):
@@ -531,7 +593,7 @@ def zoek_hoorspellen(db_file):
             attribute_names = ["auteur", "titel", "regie", "datum", "omroep", "bandnr", "vertaling", "duur", "bewerking", "genre", "productie", "themareeks", "delen", "bijzverm", "taal"]
 
             offset = 0
-            limit = 10  # Limit the number of results per page
+            limit = 1  # Limit the number of results per page
             total_records = 100  # Total limit of records for the search
             results = execute_search(db_file, field1, searchword1, field2, searchword2, offset=offset, limit=limit)
             if not results:
@@ -546,36 +608,24 @@ def zoek_hoorspellen(db_file):
             current_attribute = 0
 
             while True:
-                clear_screen()
-                print(f"Zoekresultaten (Pagina {offset // limit + 1}):")
-                # Display all fields for the current record
+                os.system('cls' if os.name == 'nt' else 'clear')
                 for index, attribute in enumerate(attribute_names):
-                    if index == current_attribute:
-                        # Highlight the current attribute with the pointer and cursor on the same line
-                        clear_screen()
-                        print(f"-> {attribute}: {results[current_record][index]}\033[K", end='', flush=True)
-                        clear_screen()
-                    else:
-                        print(f"   {attribute}: {results[current_record][index]}")
+                    print(f"   {attribute}: {results[current_record][index]}")
+                # Move cursor back to the start of the line where the selected attribute is and clear to end of line.
+                print(f"\033[{len(attribute_names) - current_attribute}A\r-> {attribute_names[current_attribute]}: {results[current_record][current_attribute]}\033[K", end='', flush=True)
 
                 key = msvcrt.getch()
                 if key in [b'\x00', b'\xe0']:
                     key = msvcrt.getch()
-
+                if key == b'e':  # Suppose 'e' is the edit key
+                    edit_current_field(db_file, current_record, current_attribute, attribute_names, results)
                 if key == b'\x1b':
+                    clear_screen()
                     break
                 elif key == b'H':  # Up arrow key
                     current_attribute = (current_attribute - 1) % len(attribute_names)
                 elif key == b'P':  # Down arrow key
                     current_attribute = (current_attribute + 1) % len(attribute_names)
-                elif key == b'M':  # Right arrow key for next record
-                    if current_record < len(results) - 1:
-                        current_record += 1
-                        current_attribute = 0  # Reset attribute index when changing records
-                elif key == b'K':  # Left arrow key for previous record
-                    if current_record > 0:
-                        current_record -= 1
-                        current_attribute = 0  # Reset attribute index when changing records
 
                 # Pagination keys should be different from record navigation keys
                 elif key == b'M':  # rechts voor volgende pagina
@@ -588,12 +638,11 @@ def zoek_hoorspellen(db_file):
                         offset -= limit
                         results = execute_search(db_file, field1, searchword1, field2, searchword2, offset=offset, limit=limit)
                         current_record = 0  # Reset index to the start of the previous page
-
+                clear_screen()
     except Exception as e:
         print(f"Er is een fout opgetreden: {e}")
         print("\033[1A", end='', flush=True)  # Optionally move the cursor up one line
 
-curses.wrapper(zoek_hoorspellen)
 
 valid_fields = [
     "auteur", "titel", "regie", "datum", "omroep", "bandnr", 
@@ -601,41 +650,8 @@ valid_fields = [
     "themareeks", "delen", "bijzverm", "taal"
 ]
 
-def edit_record_values(db_file, record_id, new_values):
-    """
-    Edit multiple field values for a given record ID.
-    
-    :param db_file: str - The path to the SQLite database file.
-    :param record_id: int - The ID of the record to be updated.
-    :param new_values: dict - A dictionary of field names and their new values.
-    """
-    
-    # Filter out any key-value pairs where the field is not in valid_fields
-    new_values = {field: value for field, value in new_values.items() if field in valid_fields}
-    
-    # Construct the SQL SET part dynamically based on the keys of 'new_values'
-    set_clause = ', '.join([f"{field} = ?" for field in new_values])
-    
-    try:
-        # Connect to the SQLite database
-        with sqlite3.connect(db_file) as conn:
-            cursor = conn.cursor()
 
-            # Prepare the SQL UPDATE query
-            sql_query = f"UPDATE hoorspelen SET {set_clause} WHERE id = ?"
 
-            # Execute the SQL command with unpacked values from 'new_values'
-            # and the 'record_id' at the end
-            cursor.execute(sql_query, (*new_values.values(), record_id))
-
-            # Commit the changes to the database
-            conn.commit()
-            
-            logging.info(f"Record {record_id} successfully updated with new values.")
-            return True
-    except sqlite3.Error as e:
-        logging.error(f"An error occurred while updating the record: {e}")
-        return False
 
 # Example usage
 # new_record_data = {
@@ -731,7 +747,7 @@ def export_function(db_file):
             writer.writerows(cursor.fetchall())
             conn.close()
             clear_screen()
-            print(f"Export succesvol bestand opgeslagen als: {filename}")
+            print(f"Export succesvol bestand opgeslagen als: {filename}")  # Optionally move the cursor up one line])
             return filename  # Return the file path of the exported CSV file
     except Exception as e:
         print(f"Er is een fout opgetreden: {e}")
