@@ -27,7 +27,6 @@ import logging
 import re
 import difflib
 import curses
-import windows-curses
 
 
 os.environ['SSL_CERT_FILE'] = certifi.where()
