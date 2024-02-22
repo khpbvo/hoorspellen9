@@ -1,11 +1,25 @@
 root - DEBUG - This is a debug message
 root - DEBUG - This is a debug message
-root - DEBUG - Starting search execution
-root - DEBUG - Executing query: SELECT auteur, titel, regie, datum, omroep, bandnr, vertaling, duur, bewerking, genre, productie, themareeks, delen, bijzverm, taal FROM hoorspelen WHERE auteur LIKE ? ORDER BY id ASC LIMIT ? OFFSET ?
-root - DEBUG - Query executed. Number of results fetched: 0
-root - DEBUG - Starting search execution
-root - DEBUG - Executing query: SELECT auteur, titel, regie, datum, omroep, bandnr, vertaling, duur, bewerking, genre, productie, themareeks, delen, bijzverm, taal FROM hoorspelen WHERE auteur LIKE ? ORDER BY id ASC LIMIT ? OFFSET ?
-root - DEBUG - Query executed. Number of results fetched: 1
-root - DEBUG - Starting search execution
-root - DEBUG - Executing query: SELECT auteur, titel, regie, datum, omroep, bandnr, vertaling, duur, bewerking, genre, productie, themareeks, delen, bijzverm, taal FROM hoorspelen WHERE auteur LIKE ? ORDER BY id ASC LIMIT ? OFFSET ?
-root - DEBUG - Query executed. Number of results fetched: 0
+root - DEBUG - Prompting for search input
+root - DEBUG - Enter key pressed - processing input
+root - DEBUG - Input string: auteur:kevin
+root - DEBUG - field1: auteur, searchword1: kevin
+root - DEBUG - field2: None, searchword2: None
+root - DEBUG - Executing search with field1=auteur, searchword1=kevin, field2=None, searchword2=None
+root - DEBUG - Starting execute_search function
+root - INFO - Connected to database: hoorspel.db
+root - DEBUG - Added search condition for field1: auteur
+root - DEBUG - Added LIMIT and OFFSET to the query
+root - INFO - Query executed successfully
+root - DEBUG - Database connection closed
+root - DEBUG - Starting the record viewing loop
+root - DEBUG - Edit key pressed - editing current field
+root - DEBUG - Starting execute_search function
+root - INFO - Connected to database: hoorspel.db
+root - DEBUG - Added search condition for field1: auteur
+root - DEBUG - Added LIMIT and OFFSET to the query
+root - INFO - Query executed successfully
+root - DEBUG - Database connection closed
+root - DEBUG - Escape key pressed - returning to search prompt
+root - DEBUG - Prompting for search input
+root - DEBUG - Escape key pressed - exiting function

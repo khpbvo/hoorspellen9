@@ -304,7 +304,6 @@ def handle_input(prompt):
     user_input = read_input()
     return user_input
 
-
 def read_input():
     """
     Reads input from the user, displaying each character as it's typed.
@@ -419,11 +418,10 @@ def bewerk_hoorspel(db_file):
 
 # Other parts of your script remain unchanged...
 valid_fields = [
-    "auteur", "titel", "regie", "datum", "omroep", "bandnr",
+    "id", "auteur", "titel", "regie", "datum", "omroep", "bandnr",
     "vertaling", "duur", "bewerking", "genre", "productie",
     "themareeks", "delen", "bijzverm", "taal"
 ]
-
 
 # Clears the terminal screen
 def clear_screen():
@@ -431,41 +429,26 @@ def clear_screen():
 
 def save_changes_to_database(db_file, record_id, field_name, new_value):
     print("save changes to database")
-    conn = sqlite3.connect(db_file)
-    cursor = conn.cursor()
-    query = f"UPDATE hoorspelen SET {field_name} = ? WHERE id = ?"
     try:
-        cursor.execute(query, (new_value, record_id))  # Correct order of parameters
-        conn.commit()
+        with sqlite3.connect(db_file) as conn:
+            conn.set_trace_callback(print)  # Optionally set a trace callback to debug SQL statements
+            cursor = conn.cursor()
+            query = f"UPDATE hoorspelen SET {field_name} = ? WHERE id = ?"
+            cursor.execute(query, (new_value, record_id))
+            # De connectie commit is hier niet nodig omdat `with` automatisch commit uitvoert als er geen uitzonderingen zijn.
     except sqlite3.Error as e:
         print(f"A SQLite error occurred: {e}")
-    finally:
-        conn.close()
 
 def edit_current_field(db_file, current_record, current_attribute, attribute_names, results):
     clear_screen()
     print(f"\nEdit mode: {attribute_names[current_attribute]}. Current value: {results[current_record][current_attribute]}")
     print("Type the new value and press ENTER. Press ESCAPE to cancel.")
     
-    # Initialize a blank string for the new value
     new_value = []
-
     while True:
         key = msvcrt.getch()
         if key == b'\r':  # Enter key
             new_value_str = ''.join(new_value)  # Convert list of characters to a string
-            valid_fields = ['auteur', 'titel', 'regie', 'datum', 'omroep', 'bandnr', 'vertaling', 'duur', 'bewerking', 'genre', 'productie', 'themareeks', 'delen', 'bijzverm', 'taal']
-
-            if new_value_str:  # If the new value is not empty
-                field_name = attribute_names[current_attribute]
-                if field_name in valid_fields:
-                    # Perform the database update
-                    print("Before calling save_changes_to_database")
-                    save_changes_to_database(db_file, results[current_record][0], field_name, new_value_str)
-                    clear_screen()
-                    print("\nChanges saved.")
-                else:
-                    print(f"Invalid field: {field_name}")
             break
         elif key == b'\x1b':  # Escape key
             clear_screen()
@@ -483,8 +466,23 @@ def edit_current_field(db_file, current_record, current_attribute, attribute_nam
             except UnicodeDecodeError:
                 continue  # Ignore undecodable characters
 
-    input("\nPress any key to continue...")  # Wait for user to acknowledge before proceeding
+    # Zorg ervoor dat deze variabelen buiten de while loop, maar binnen de functie scope worden gedefinieerd
+    field_name = attribute_names[current_attribute]
+    record_id = results[current_record][0]  # Aannemende dat de ID altijd op index 0 staat in je results
+    # Voorbeeld logica direct voor het aanroepen van save_changes_to_database 
+    print(f"Attempting to update record ID: {record_id} with {field_name} = {new_value_str}")
+
+    # Controleer of new_value_str niet leeg is voordat je de update doet
+    if new_value_str:
+        print("Before calling save_changes_to_database")
+        save_changes_to_database(db_file, record_id, field_name, new_value_str)
+        print("\nChanges saved.")
+    else:
+        print("\nNo changes made.")
+
+    input("\nPress any key to continue...")  # Wacht op gebruikersinput voordat je verdergaat
     clear_screen()
+
     
     # Clear screen and re-print the updated record for continuity
     clear_screen()
@@ -500,148 +498,175 @@ def correct_field_name(field):
     matches = difflib.get_close_matches(field, valid_fields, n=1, cutoff=0.6)
     return matches[0] if matches else None
 
-# Executes a search query against the database
-def execute_search(db_file, field1, searchword1, field2=None, searchword2=None, offset=0, limit=10):
-    logging.debug('Starting search execution')
-    conn = None
-    results = []
+import logging
 
+def execute_search(db_file, field1, searchword1, field2, searchword2, offset, limit):
+    logging.debug("Starting execute_search function")
+    
     try:
+        # Connect to the SQLite database
         conn = sqlite3.connect(db_file)
         cursor = conn.cursor()
+        logging.info(f"Connected to database: {db_file}")
 
-        # Assuming 'valid_fields' is a list of all valid field names
-        if field1 not in valid_fields:
-            logging.error(f"Invalid field: {field1}")
-            return results
+        # Initialize the query and params
+        query = "SELECT * FROM hoorspelen WHERE "
+        params = []
 
-        # Select all fields for the record
-        query = "SELECT auteur, titel, regie, datum, omroep, bandnr, vertaling, duur, bewerking, genre, productie, themareeks, delen, bijzverm, taal FROM hoorspelen WHERE "
-        query += f"{field1} LIKE ?"
-        params = [f'%{searchword1}%']
+        # Add conditions for the first field and search word
+        if field1 and searchword1:
+            query += f"{field1} LIKE ?"
+            params.append(f"%{searchword1}%")
+            logging.debug(f"Added search condition for field1: {field1}")
 
-        if field2 and searchword2 and field2 in valid_fields and field2 != field1:
+        # Add conditions for the second field and search word if provided
+        if field2 and searchword2:
             query += f" AND {field2} LIKE ?"
-            params.append(f'%{searchword2}%')
+            params.append(f"%{searchword2}%")
+            logging.debug(f"Added search condition for field2: {field2}")
 
-        query += " ORDER BY id ASC LIMIT ? OFFSET ?"
+        # Add LIMIT and OFFSET to the query to handle pagination
+        query += " LIMIT ? OFFSET ?"
         params.extend([limit, offset])
+        logging.debug("Added LIMIT and OFFSET to the query")
 
-        logging.debug(f"Executing query: {query}")
+        # Execute the query
         cursor.execute(query, params)
         results = cursor.fetchall()
-        
-        logging.debug(f"Query executed. Number of results fetched: {len(results)}")
-    except sqlite3.Error as e:
-        logging.error(f'A SQLite error occurred: {e}')
-        return None
-    finally:
-        if conn:
-            conn.close()
+        logging.info("Query executed successfully")
 
-    return results
+        # Close the connection to the database
+        conn.close()
+        logging.debug("Database connection closed")
 
+        return results
+    except Exception as e:
+        logging.error(f"An error occurred in execute_search: {e}")
+        raise
 
-# Parses user input into a dictionary of field-value pairs
+# Other helper functions like clear_screen, save_changes_to_database,
+# edit_current_field, correct_field_name, execute_search remain unchanged...
+
 def parse_input(input_str):
-    parsed_input = {}
-    matches = re.findall(r'(\w+):([^,]+)', input_str)
-    for field, value in matches:
-        corrected_field = correct_field_name(field)
-        if corrected_field:
-            parsed_input[corrected_field] = value.strip()
-        else:
-            logging.error(f"Invalid field: {field}. Valid fields are: {', '.join(valid_fields)}")
-            return None
-    return parsed_input
+    # This is just an example function. You'll need to implement the actual parsing logic.
+    try:
+        parts = input_str.split(',')
+        parsed_data = {}
+        for part in parts:
+            field, value = part.split(':')
+            parsed_data[field.strip()] = value.strip()
+        return parsed_data
+    except Exception as e:
+        logging.error(f"Failed to parse input: {e}")
+        return None
 
-# Main function to perform the interactive search
+# Configure logging
+logging.basicConfig(level=logging.DEBUG, filename='app.log', filemode='w',
+                    format='%(name)s - %(levelname)s - %(message)s')
+import pdb
+
+# Define valid_fields with the list of fields you want to display
+valid_fields = ["auteur", "titel", "regie", "datum", "omroep", "bandnr", "vertaling", "duur", "bewerking", "genre", "productie", "themareeks", "delen", "bijzverm", "taal"]
+
+# Placeholder for the clear_screen function.
+def clear_screen():
+    os.system('cls' if os.name == 'nt' else 'clear')
+
 def zoek_hoorspellen(db_file):
+    conn = sqlite3.connect(db_file)
+    cursor = conn.cursor()
     clear_screen()
     try:
         while True:
+            logging.debug("Prompting for search input")
             print("Voer zoekopdracht in (Veld1:Zoekwoord1,Veld2:Zoekwoord2): ", end='', flush=True)
             input_str = ''
-            # Read input character by character to detect Escape key
             while True:
                 char = msvcrt.getch()
                 if char == b'\x1b':  # Escape key
+                    logging.debug("Escape key pressed - exiting function")
                     return  # Exit function and return to main menu
                 elif char == b'\r':  # Enter key
-                    break  # Exit the character reading loop to process input
+                    logging.debug("Enter key pressed - processing input")
+                    break
                 else:
-                    # Echo character to console and add to input string
                     try:
                         print(char.decode(), end='', flush=True)
                         input_str += char.decode()
                     except UnicodeDecodeError:
-                        continue  # Ignore undecodable characters
+                        logging.warning("UnicodeDecodeError encountered - ignoring undecodable characters")
+                        continue
 
+            logging.debug(f"Input string: {input_str}")
             parsed_input = parse_input(input_str.strip())
-            if parsed_input is None or not parsed_input:
+            if not parsed_input:
+                logging.debug("Input parsing failed - incorrect format")
                 clear_screen()
                 print("\nVerkeerd formaat. Gebruik 'veld:waarde'. Druk op ENTER om verder te gaan.", end='')
-                input()  # Wait for the user to press Enter
+                input()
                 clear_screen()
                 continue
 
             field1, searchword1 = next(iter(parsed_input.items()))
+            logging.debug(f"field1: {field1}, searchword1: {searchword1}")
             parsed_input.pop(field1)
             field2, searchword2 = next(iter(parsed_input.items()), (None, None))
-
-            # Define the list of fields to display for each record
-            attribute_names = ["auteur", "titel", "regie", "datum", "omroep", "bandnr", "vertaling", "duur", "bewerking", "genre", "productie", "themareeks", "delen", "bijzverm", "taal"]
+            logging.debug(f"field2: {field2}, searchword2: {searchword2}")
 
             offset = 0
             limit = 1  # Limit the number of results per page
-            total_records = 100  # Total limit of records for the search
+            logging.debug(f"Executing search with field1={field1}, searchword1={searchword1}, field2={field2}, searchword2={searchword2}")
             results = execute_search(db_file, field1, searchword1, field2, searchword2, offset=offset, limit=limit)
+
             if not results:
+                logging.debug("No results found for the search criteria")
                 print("Geen resultaten gevonden. Druk op ENTER om door te gaan of ESCAPE om te stoppen.")
                 action_key = msvcrt.getch()
                 if action_key == b'\x1b':  # ESC key
                     continue
                 else:
-                    return  # Return to the main menu
+                    return
 
             current_record = 0
-            current_attribute = 0
-
+            current_attribute = 1  # Start enumeration from 1
+            logging.debug("Starting the record viewing loop")            
             while True:
-                os.system('cls' if os.name == 'nt' else 'clear')
-                for index, attribute in enumerate(attribute_names):
-                    print(f"   {attribute}: {results[current_record][index]}")
-                # Move cursor back to the start of the line where the selected attribute is and clear to end of line.
-                print(f"\033[{len(attribute_names) - current_attribute}A\r-> {attribute_names[current_attribute]}: {results[current_record][current_attribute]}\033[K", end='', flush=True)
-
-                key = msvcrt.getch()
-                if key in [b'\x00', b'\xe0']:
-                    key = msvcrt.getch()
-                if key == b'e':  # Suppose 'e' is the edit key
-                    edit_current_field(db_file, current_record, current_attribute, attribute_names, results)
-                if key == b'\x1b':
                     clear_screen()
-                    break
-                elif key == b'H':  # Up arrow key
-                    current_attribute = (current_attribute - 1) % len(attribute_names)
-                elif key == b'P':  # Down arrow key
-                    current_attribute = (current_attribute + 1) % len(attribute_names)
-
-                # Pagination keys should be different from record navigation keys
-                elif key == b'M':  # rechts voor volgende pagina
-                    if offset + limit < total_records:
-                        offset += limit
-                        results = execute_search(db_file, field1, searchword1, field2, searchword2, offset=offset, limit=limit)
-                        current_record = 0  # Reset index to the start of the next page
-                elif key == b'K':  # Links voor vorige pagina
-                    if offset - limit >= 0:
-                        offset -= limit
-                        results = execute_search(db_file, field1, searchword1, field2, searchword2, offset=offset, limit=limit)
-                        current_record = 0  # Reset index to the start of the previous page
-                clear_screen()
+                    for index, attribute in enumerate(valid_fields, start=1):
+                        value = results[current_record][index - 1]  # Adjusted index
+                        if index == current_attribute:
+                            print(f"-> {attribute}: {value}")
+                        else:
+                            print(f"   {attribute}: {value}")
+                    sys.stdout.flush()
+            
+                    key = msvcrt.getch()
+                    if key in [b'\x00', b'\xe0']:  # Arrow keys are preceded by these bytes
+                        key = msvcrt.getch()
+            
+                    if key == b'H':  # Up arrow key
+                        current_attribute = (current_attribute - 1) if current_attribute > 1 else len(valid_fields)
+                    elif key == b'P':  # Down arrow key
+                        current_attribute = (current_attribute + 1) if current_attribute < len(valid_fields) else 1
+                    elif key == b'e':  # 'e' key for edit
+                        logging.debug("Edit key pressed - editing current field")
+                        try:
+                            # Subtract 1 from current_attribute to get the correct index for the results list
+                            edit_current_field(db_file, current_record, current_attribute - 1, valid_fields, results)
+                            # Refresh results after editing
+                            results = execute_search(db_file, field1, searchword1, field2, searchword2, offset=offset, limit=limit)
+                        except Exception as e:
+                            logging.error(f"Error in edit_current_field: {e}")
+                            print(f"Error in edit_current_field: {e}")
+                    elif key == b'\x1b':  # Escape key
+                        logging.debug("Escape key pressed - returning to search prompt")
+                        break  # Break out of the inner loop to go back to the search prompt
+            
     except Exception as e:
+        logging.error(f"An error occurred: {e}")
         print(f"Er is een fout opgetreden: {e}")
-        print("\033[1A", end='', flush=True)  # Optionally move the cursor up one line
+
+    print("\033[1A", end='', flush=True)  # Optionally move the cursor up one line
 
 
 valid_fields = [
