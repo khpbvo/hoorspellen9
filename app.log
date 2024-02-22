@@ -1,4 +1,8 @@
 root - DEBUG - This is a debug message
+google.auth.transport.requests - DEBUG - Making request: POST https://oauth2.googleapis.com/token
+urllib3.connectionpool - DEBUG - Starting new HTTPS connection (1): oauth2.googleapis.com:443
+urllib3.connectionpool - DEBUG - https://oauth2.googleapis.com:443 "POST /token HTTP/1.1" 200 None
+googleapiclient.discovery_cache - INFO - file_cache is only supported with oauth2client<4.0.0
 root - DEBUG - This is a debug message
 root - DEBUG - Prompting for search input
 root - DEBUG - Enter key pressed - processing input
@@ -14,17 +18,13 @@ root - INFO - Query executed successfully
 root - DEBUG - Database connection closed
 root - DEBUG - Starting the record viewing loop
 root - DEBUG - Edit key pressed - editing current field
-root - DEBUG - Edit key pressed - editing current field
 root - DEBUG - Starting execute_search function
 root - INFO - Connected to database: hoorspel.db
 root - DEBUG - Added search condition for field1: auteur
 root - DEBUG - Added LIMIT and OFFSET to the query
 root - INFO - Query executed successfully
 root - DEBUG - Database connection closed
-root - DEBUG - Edit key pressed - editing current field
-root - DEBUG - Edit key pressed - editing current field
-root - DEBUG - Edit key pressed - editing current field
-root - DEBUG - Edit key pressed - editing current field
 root - DEBUG - Escape key pressed - returning to search prompt
 root - DEBUG - Prompting for search input
 root - DEBUG - Escape key pressed - exiting function
+googleapiclient.discovery - DEBUG - URL being requested: POST https://gmail.googleapis.com/gmail/v1/users/me/messages/send?alt=json

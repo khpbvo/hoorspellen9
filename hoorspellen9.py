@@ -498,8 +498,6 @@ def correct_field_name(field):
     matches = difflib.get_close_matches(field, valid_fields, n=1, cutoff=0.6)
     return matches[0] if matches else None
 
-import logging
-
 def execute_search(db_file, field1, searchword1, field2, searchword2, offset, limit):
     logging.debug("Starting execute_search function")
     
@@ -682,7 +680,7 @@ valid_fields = [
 # DB file path
 db_file = 'hoorspel.db'
 clear_screen()
-        # Laat het totaal aantal hoorspellen zien.
+# Laat het totaal aantal hoorspellen zien.
 def toon_totaal_hoorspellen(db_file='hoorspel.db'):
     conn = sqlite3.connect(db_file)
     cursor = conn.cursor()
@@ -693,7 +691,8 @@ def toon_totaal_hoorspellen(db_file='hoorspel.db'):
     clear_screen()
     input(f"Totaal aantal hoorspellen: {total}. Druk op Enter om terug te gaan naar het hoofdmenu...")
     clear_screen() #     
-    # De gesciedenis functie in het hoofdmenu. Laat de laatste 10 toegevoegde records zien.
+
+# De gesciedenis functie in het hoofdmenu. Laat de laatste 10 toegevoegde records zien.
 def geschiedenis(db_file):
     clear_screen()
     # Database connection setup
@@ -745,11 +744,9 @@ def geschiedenis(db_file):
     conn.close()
     clear_screen()
 
-
 def export_function(db_file):
     timestamp = datetime.datetime.now().strftime("%d-%m-%Y_%H-%M")  # Replacing ':' with '_'
     filename = f"hoorspellendb_{timestamp}.csv"
-    
     try:
         with open(filename, 'w', newline='', encoding='utf-8') as csvfile:
             conn = sqlite3.connect(db_file)
@@ -860,10 +857,10 @@ def export_and_email_backup(service, db_file, email_address):
 if __name__ == "__main__":
     initialize_db("hoorspel.db")
     db_file = 'hoorspel.db'
-    #email_address = 'sjefsdatabasebackups@gmail.com'
-    #service = gmail_service()
+    email_address = 'sjefsdatabasebackups@gmail.com'
+    service = gmail_service()
     main_menu()
-    #if service:
-        #export_and_email_backup(service, db_file, email_address)
-    #else:
-        #print("Failed to initialize Gmail service.")
+    if service:
+        export_and_email_backup(service, db_file, email_address)
+    else:
+        print("Failed to initialize Gmail service.")
