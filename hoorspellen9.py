@@ -22,9 +22,7 @@ import pickle
 import os.path
 import mimetypes
 import logging
-import re
 import difflib
-
 
 
 os.environ['SSL_CERT_FILE'] = certifi.where()
@@ -628,31 +626,29 @@ def zoek_hoorspellen(db_file):
                     return
 
             current_record = 0
-            current_attribute = 1  # Start enumeration from 1
-            logging.debug("Starting the record viewing loop")            
+            current_attribute = 0  # Start enumeration from 1
+            logging.debug("Starting the record viewing loop")
             while True:
                     clear_screen()
-                    for index, attribute in enumerate(valid_fields, start=1):
-                        value = results[current_record][index - 1]  # Adjusted index
+                    for index, attribute in enumerate(valid_fields, start=0):
+                        value = results[current_record][index - 0]  # Adjusted index
                         if index == current_attribute:
                             print(f"-> {attribute}: {value}")
                         else:
-                            print(f"   {attribute}: {value}")
-                    sys.stdout.flush()
-            
+                            print(f"   {attribute}: {value}")            
                     key = msvcrt.getch()
                     if key in [b'\x00', b'\xe0']:  # Arrow keys are preceded by these bytes
                         key = msvcrt.getch()
             
                     if key == b'H':  # Up arrow key
-                        current_attribute = (current_attribute - 1) if current_attribute > 1 else len(valid_fields)
+                        current_attribute = (current_attribute - 1) % len(valid_fields)  # Wrap around using modulo
                     elif key == b'P':  # Down arrow key
-                        current_attribute = (current_attribute + 1) if current_attribute < len(valid_fields) else 1
+                        current_attribute = (current_attribute + 1) % len(valid_fields)  # Wrap around using modulo
                     elif key == b'e':  # 'e' key for edit
                         logging.debug("Edit key pressed - editing current field")
                         try:
                             # Subtract 1 from current_attribute to get the correct index for the results list
-                            edit_current_field(db_file, current_record, current_attribute - 1, valid_fields, results)
+                            edit_current_field(db_file, current_record, current_attribute, valid_fields, results)
                             # Refresh results after editing
                             results = execute_search(db_file, field1, searchword1, field2, searchword2, offset=offset, limit=limit)
                         except Exception as e:
@@ -670,7 +666,7 @@ def zoek_hoorspellen(db_file):
 
 
 valid_fields = [
-    "auteur", "titel", "regie", "datum", "omroep", "bandnr", 
+    "id","auteur", "titel", "regie", "datum", "omroep", "bandnr", 
     "vertaling", "duur", "bewerking", "genre", "productie", 
     "themareeks", "delen", "bijzverm", "taal"
 ]
