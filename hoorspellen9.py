@@ -577,16 +577,22 @@ def zoek_hoorspellen(db_file):
     try:
         while True:
             logging.debug("Prompting for search input")
+            clear_screen()
             print("Voer zoekopdracht in (Veld1:Zoekwoord1,Veld2:Zoekwoord2): ", end='', flush=True)
             input_str = ''
             while True:
                 char = msvcrt.getch()
                 if char == b'\x1b':  # Escape key
+                    clear_screen()
                     logging.debug("Escape key pressed - exiting function")
                     return  # Exit function and return to main menu
                 elif char == b'\r':  # Enter key
                     logging.debug("Enter key pressed - processing input")
                     break
+                elif char == b'\x08':  # Backspace key
+                    if len(input_str) > 0:
+                        input_str = input_str[:-1]  # Remove the last character
+                        print('\b \b', end='', flush=True)  # Clear the character on the screen
                 else:
                     try:
                         print(char.decode(), end='', flush=True)
