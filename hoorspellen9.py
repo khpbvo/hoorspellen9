@@ -635,7 +635,7 @@ def zoek_hoorspellen(db_file):
                         if index == current_attribute:
                             print(f"-> {attribute}: {value}")
                         else:
-                            print(f"   {attribute}: {value}")            
+                            print(f"   {attribute}: {value}")
                     key = msvcrt.getch()
                     if key in [b'\x00', b'\xe0']:  # Arrow keys are preceded by these bytes
                         key = msvcrt.getch()

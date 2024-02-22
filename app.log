@@ -13,13 +13,6 @@ root - DEBUG - Added LIMIT and OFFSET to the query
 root - INFO - Query executed successfully
 root - DEBUG - Database connection closed
 root - DEBUG - Starting the record viewing loop
-root - DEBUG - Edit key pressed - editing current field
-root - DEBUG - Starting execute_search function
-root - INFO - Connected to database: hoorspel.db
-root - DEBUG - Added search condition for field1: auteur
-root - DEBUG - Added LIMIT and OFFSET to the query
-root - INFO - Query executed successfully
-root - DEBUG - Database connection closed
 root - DEBUG - Escape key pressed - returning to search prompt
 root - DEBUG - Prompting for search input
 root - DEBUG - Escape key pressed - exiting function
