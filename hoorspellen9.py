@@ -652,14 +652,17 @@ def zoek_hoorspellen(db_file):
                         current_attribute = (current_attribute + 1) % len(valid_fields)  # Wrap around using modulo
                     elif key == b'e':  # 'e' key for edit
                         logging.debug("Edit key pressed - editing current field")
-                        try:
-                            # Subtract 1 from current_attribute to get the correct index for the results list
-                            edit_current_field(db_file, current_record, current_attribute, valid_fields, results)
-                            # Refresh results after editing
-                            results = execute_search(db_file, field1, searchword1, field2, searchword2, offset=offset, limit=limit)
-                        except Exception as e:
-                            logging.error(f"Error in edit_current_field: {e}")
-                            print(f"Error in edit_current_field: {e}")
+                        if valid_fields[current_attribute] == "id":
+                            print("The 'id' field is not editable.")
+                        else:
+                            try:
+                                # Subtract 1 from current_attribute to get the correct index for the results list
+                                edit_current_field(db_file, current_record, current_attribute, valid_fields, results)
+                                # Refresh results after editing
+                                results = execute_search(db_file, field1, searchword1, field2, searchword2, offset=offset, limit=limit)
+                            except Exception as e:
+                                logging.error(f"Error in edit_current_field: {e}")
+                                print(f"Error in edit_current_field: {e}")
                     elif key == b'\x1b':  # Escape key
                         logging.debug("Escape key pressed - returning to search prompt")
                         break  # Break out of the inner loop to go back to the search prompt
