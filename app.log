@@ -1,18 +1,33 @@
 root - DEBUG - This is a debug message
 root - DEBUG - This is a debug message
 root - DEBUG - Prompting for search input
+root - WARNING - UnicodeDecodeError encountered - ignoring undecodable characters
+root - WARNING - UnicodeDecodeError encountered - ignoring undecodable characters
+root - WARNING - UnicodeDecodeError encountered - ignoring undecodable characters
+root - WARNING - UnicodeDecodeError encountered - ignoring undecodable characters
+root - WARNING - UnicodeDecodeError encountered - ignoring undecodable characters
+root - WARNING - UnicodeDecodeError encountered - ignoring undecodable characters
+root - WARNING - UnicodeDecodeError encountered - ignoring undecodable characters
 root - DEBUG - Enter key pressed - processing input
-root - DEBUG - Input string: auteur:kevin
-root - DEBUG - field1: auteur, searchword1: kevin
+root - DEBUG - Input string: auteurMMMMMMMauteur:kevin
+root - DEBUG - field1: auteurMMMMMMMauteur, searchword1: kevin
 root - DEBUG - field2: None, searchword2: None
-root - DEBUG - Executing search with field1=auteur, searchword1=kevin, field2=None, searchword2=None
+root - DEBUG - Executing search with field1=auteurMMMMMMMauteur, searchword1=kevin, field2=None, searchword2=None
 root - DEBUG - Starting execute_search function
 root - INFO - Connected to database: hoorspel.db
-root - DEBUG - Added search condition for field1: auteur
+root - DEBUG - Added search condition for field1: auteurMMMMMMMauteur
 root - DEBUG - Added LIMIT and OFFSET to the query
-root - INFO - Query executed successfully
-root - DEBUG - Database connection closed
-root - DEBUG - Starting the record viewing loop
-root - DEBUG - Escape key pressed - returning to search prompt
+root - ERROR - An error occurred in execute_search: unrecognized token: ""
+root - ERROR - An error occurred: unrecognized token: ""
 root - DEBUG - Prompting for search input
-root - DEBUG - Escape key pressed - exiting function
+root - DEBUG - Enter key pressed - processing input
+root - DEBUG - Input string: auteurr:kevinn
+root - DEBUG - field1: auteurr, searchword1: kevinn
+root - DEBUG - field2: None, searchword2: None
+root - DEBUG - Executing search with field1=auteurr, searchword1=kevinn, field2=None, searchword2=None
+root - DEBUG - Starting execute_search function
+root - INFO - Connected to database: hoorspel.db
+root - DEBUG - Added search condition for field1: auteurr
+root - DEBUG - Added LIMIT and OFFSET to the query
+root - ERROR - An error occurred in execute_search: unrecognized token: ""
+root - ERROR - An error occurred: unrecognized token: ""

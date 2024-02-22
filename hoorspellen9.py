@@ -459,10 +459,12 @@ def edit_current_field(db_file, current_record, current_attribute, attribute_nam
         else:
             try:
                 char = key.decode()
-                new_value.append(char)
-                print(char, end='', flush=True)  # Display the character
+                if char.isprintable():  # Ensure the character is printable before appending
+                    new_value.append(char)
+                    print(char, end='', flush=True)  # Display the character
             except UnicodeDecodeError:
                 continue  # Ignore undecodable characters
+    
 
     # Zorg ervoor dat deze variabelen buiten de while loop, maar binnen de functie scope worden gedefinieerd
     field_name = attribute_names[current_attribute]
@@ -571,8 +573,6 @@ def clear_screen():
     os.system('cls' if os.name == 'nt' else 'clear')
 
 def zoek_hoorspellen(db_file):
-    conn = sqlite3.connect(db_file)
-    cursor = conn.cursor()
     clear_screen()
     try:
         while True:
@@ -636,10 +636,10 @@ def zoek_hoorspellen(db_file):
                             print(f"-> {attribute}: {value}")
                         else:
                             print(f"   {attribute}: {value}")
+                    print("\033[{}A\033[{}C".format(len(valid_fields) - current_attribute, len(f"-> {valid_fields[current_attribute]}: {results[current_record][current_attribute]}")), end='', flush=True)
                     key = msvcrt.getch()
                     if key in [b'\x00', b'\xe0']:  # Arrow keys are preceded by these bytes
                         key = msvcrt.getch()
-            
                     if key == b'H':  # Up arrow key
                         current_attribute = (current_attribute - 1) % len(valid_fields)  # Wrap around using modulo
                     elif key == b'P':  # Down arrow key
@@ -661,8 +661,7 @@ def zoek_hoorspellen(db_file):
     except Exception as e:
         logging.error(f"An error occurred: {e}")
         print(f"Er is een fout opgetreden: {e}")
-
-    print("\033[1A", end='', flush=True)  # Optionally move the cursor up one line
+    # print("\033[1A", end='', flush=True)  # Voorbeeld ANSI Escape code om de cursor omhoog te verplaatsen
 
 
 valid_fields = [
@@ -671,24 +670,8 @@ valid_fields = [
     "themareeks", "delen", "bijzverm", "taal"
 ]
 
-
-
-
-# Example usage
-# new_record_data = {
-#     "auteur": "New Author",
-#     "titel": "New Title",
-#     "regie": "New Director",
-#     # ... other fields ...
-# }
-
-# Make sure to replace 'your_database.db' and '1' with your actual database file path and record ID respectively
-# success = edit_record_values('your_database.db', 1, new_record_data)
-
-
-# Placeholder for the actual database file path
+# DB file path
 db_file = 'hoorspel.db'
-
 clear_screen()
         # Laat het totaal aantal hoorspellen zien.
 def toon_totaal_hoorspellen(db_file='hoorspel.db'):
