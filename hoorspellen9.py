@@ -606,7 +606,6 @@ def zoek_hoorspellen(db_file):
                 clear_screen()
                 print("\nVerkeerd formaat. Gebruik 'veld:waarde'. Druk op ENTER om verder te gaan.", end='')
                 input()
-                clear_screen()
                 continue
 
             field1, searchword1 = next(iter(parsed_input.items()))
@@ -616,9 +615,17 @@ def zoek_hoorspellen(db_file):
             logging.debug(f"field2: {field2}, searchword2: {searchword2}")
 
             offset = 0
-            limit = 1  # Limit the number of results per page
-            logging.debug(f"Executing search with field1={field1}, searchword1={searchword1}, field2={field2}, searchword2={searchword2}")
-            results = execute_search(db_file, field1, searchword1, field2, searchword2, offset=offset, limit=limit)
+            limit = 1
+
+            try:# Limit the number of results per page
+                logging.debug(f"Executing search with field1={field1}, searchword1={searchword1}, field2={field2}, searchword2={searchword2}")
+                results = execute_search(db_file, field1, searchword1, field2, searchword2, offset=offset, limit=limit)
+            except sqlite3.OperationalError as e:
+                logging.error(f"Zoekopdracht mislukt: {e}")
+                clear_screen()
+                print("\nVerkeerd formaat. Gebruik 'veld:waarde'. Druk op ENTER om verder te gaan.", end='')
+                input()
+                continue
 
             if not results:
                 logging.debug("No results found for the search criteria")
