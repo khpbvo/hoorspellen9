@@ -1,18 +1,4 @@
 root - DEBUG - This is a debug message
 googleapiclient.discovery_cache - INFO - file_cache is only supported with oauth2client<4.0.0
 root - DEBUG - This is a debug message
-root - DEBUG - Prompting for search input
-root - DEBUG - Enter key pressed - processing input
-root - DEBUG - Input string: klaas:vaak
-root - DEBUG - field1: klaas, searchword1: vaak
-root - DEBUG - field2: None, searchword2: None
-root - DEBUG - Executing search with field1=klaas, searchword1=vaak, field2=None, searchword2=None
-root - DEBUG - Starting execute_search function
-root - INFO - Connected to database: hoorspel.db
-root - DEBUG - Added search condition for field1: klaas
-root - DEBUG - Added LIMIT and OFFSET to the query
-root - ERROR - An error occurred in execute_search: no such column: klaas
-root - ERROR - Zoekopdracht mislukt: no such column: klaas
-root - DEBUG - Prompting for search input
-root - DEBUG - Escape key pressed - exiting function
 googleapiclient.discovery - DEBUG - URL being requested: POST https://gmail.googleapis.com/gmail/v1/users/me/messages/send?alt=json

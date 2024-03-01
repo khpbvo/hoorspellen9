@@ -130,7 +130,6 @@ def import_function(db_file):
 
     input("Druk op Enter om verder te gaan...")
 
-
 def export_function(db_file):
     timestamp = datetime.datetime.now().strftime("%d-%m-%Y_%H-%M")  # Replacing ':' with '_'
     filename = f"hoorspellendb{timestamp}.csv"
@@ -203,104 +202,63 @@ def validate_date(date_string):
         return False
 
 def voeg_toe(db_file):
-    os.system('cls' if os.name == 'nt' else 'clear')
-    conn = sqlite3.connect(db_file)
-    cursor = conn.cursor()
+    with sqlite3.connect(db_file) as conn:
+        cursor = conn.cursor()
+    
+    fields = [
+        "auteur", "titel", "regie", "datum", "omroep",
+        "bandnr", "vertaling", "duur", "bewerking", "genre",
+        "productie", "themareeks", "delen", "bijzverm", "taal"
+    ]
+    values = {field: "" for field in fields}  # Initialize all fields with empty values
 
-    auteur = handle_input("Auteur: ")
-    if auteur is None: 
-        conn.close()
-        return
-
-    titel = handle_input("Titel: ")
-    if titel is None: 
-        conn.close()
-        return
-
-    regie = handle_input("Regie: ")
-    if regie is None: 
-        conn.close()
-        return
+    current_field_index = 0
+    editing = False
 
     while True:
-        datum = handle_input("Datum (yyyy/mm/dd): ")
-        if datum is None: 
-            conn.close()
-            return
-        if validate_date(datum):
-            break
-        else:
-            print("Ongeldige datum. Voer de datum in het formaat yyyy/mm/dd.")
+        clear_screen()
+        for i, field in enumerate(fields):
+            prefix = "-> " if i == current_field_index else "   "
+            print(f"{prefix}{field}: {values[field]}")
 
-    omroep = handle_input("Omroep: ")
-    if omroep is None: 
-        conn.close()
-        return
-    
-    bandnr = handle_input("Bandnummer: ")
-    if bandnr is None: 
-        conn.close()
-        return
+        key = msvcrt.getch()
+        if key in [b'\x00', b'\xe0']:  # Special keys (like arrow keys)
+            key = msvcrt.getch()
+            if key == b'H':  # Up arrow key
+                current_field_index = max(0, current_field_index - 1)
+            elif key == b'P':  # Down arrow key
+                current_field_index = min(len(fields) - 1, current_field_index + 1)
+        elif key == b'e' and not editing:  # 'e' key to enter edit mode
+            editing = True
+            if fields[current_field_index] == 'datum':
+                while True:
+                    values[fields[current_field_index]] = edit_field_value(fields[current_field_index], values[fields[current_field_index]])
+                    if validate_date(values[fields[current_field_index]]):
+                        break
+                    else:
+                        print("Ongeldige datum. Voer de datum in het formaat yyyy/mm/dd.")
+            else:
+                values[fields[current_field_index]] = edit_field_value(fields[current_field_index], values[fields[current_field_index]])
+            editing = False
+        elif key == b'\x1b':  # ESCAPE key
+            if editing:
+                editing = False  # Exit edit mode without saving
+            else:
+                break  # Exit "Voeg toe" function
+            # Insert the new record into the database
+        placeholders = ', '.join('?' * len(values))
+        cursor.execute(f"INSERT INTO hoorspelen ({', '.join(fields)}) VALUES ({placeholders})", list(values.values()))
 
-    vertaling = handle_input("Vertaling: ")
-    if vertaling is None: 
-        conn.close()
-        return
-    
-    duur = handle_input("Duur: ")
-    if duur is None: 
-        conn.close()
-        return
-    
-    bewerking = handle_input("Bewerking: ")
-    if bewerking is None: 
-        conn.close()
-        return
-    
-    genre = handle_input("Genre: ")
-    if genre is None: 
-        conn.close()
-        return
-    
-    productie = handle_input("Productie: ")
-    if productie is None: 
-        conn.close()
-        return
-    
-    themareeks = handle_input("Themareeks: ")
-    if themareeks is None: 
-        conn.close()
-        return
-    
-    delen = handle_input("Delen: ")
-    if delen is None: 
-        conn.close()
-        return
-    
-    bijzverm = handle_input("Bijzverm: ")
-    if bijzverm is None: 
-        conn.close()
-        return
-    
-    taal = handle_input("Taal: ")
-    if taal is None: 
-        conn.close()
-        return
-    
-    cursor.execute('''
-        INSERT INTO hoorspelen (auteur, titel, regie, datum, omroep, bandnr, vertaling, duur, bewerking, genre, productie, themareeks, delen, bijzverm, taal)
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-    ''', (auteur, titel, regie, datum, omroep,bandnr, vertaling, duur, bewerking, genre, productie, themareeks, delen, bijzverm, taal))
-
-    conn.commit()
-    conn.close()
-    print("Inzending succesvol toegevoegd.")
-    input("Druk op Enter om verder te gaan...")  # Wait for user to read the message
+def edit_field_value(field_name, current_value):
+    print(f"\nEditing {field_name}: {current_value}")
+    new_value = input("Enter new value: ")  # Simplified for conceptual purposes
+    return new_value
 
 def handle_input(prompt):
     print(prompt, end='', flush=True)
     user_input = read_input()
     return user_input
+
 
 def read_input():
     """
