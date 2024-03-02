@@ -201,58 +201,6 @@ def validate_date(date_string):
     except ValueError:
         return False
 
-def voeg_toe(db_file):
-    with sqlite3.connect(db_file) as conn:
-        cursor = conn.cursor()
-    
-    fields = [
-        "auteur", "titel", "regie", "datum", "omroep",
-        "bandnr", "vertaling", "duur", "bewerking", "genre",
-        "productie", "themareeks", "delen", "bijzverm", "taal"
-    ]
-    values = {field: "" for field in fields}  # Initialize all fields with empty values
-
-    current_field_index = 0
-    editing = False
-
-    while True:
-        clear_screen()
-        for i, field in enumerate(fields):
-            prefix = "-> " if i == current_field_index else "   "
-            print(f"{prefix}{field}: {values[field]}")
-
-        key = msvcrt.getch()
-        if key in [b'\x00', b'\xe0']:  # Special keys (like arrow keys)
-            key = msvcrt.getch()
-            if key == b'H':  # Up arrow key
-                current_field_index = max(0, current_field_index - 1)
-            elif key == b'P':  # Down arrow key
-                current_field_index = min(len(fields) - 1, current_field_index + 1)
-        elif key == b'e' and not editing:  # 'e' key to enter edit mode
-            editing = True
-            if fields[current_field_index] == 'datum':
-                while True:
-                    values[fields[current_field_index]] = edit_field_value(fields[current_field_index], values[fields[current_field_index]])
-                    if validate_date(values[fields[current_field_index]]):
-                        break
-                    else:
-                        print("Ongeldige datum. Voer de datum in het formaat yyyy/mm/dd.")
-            else:
-                values[fields[current_field_index]] = edit_field_value(fields[current_field_index], values[fields[current_field_index]])
-            editing = False
-        elif key == b'\x1b':  # ESCAPE key
-            if editing:
-                editing = False  # Exit edit mode without saving
-            else:
-                break  # Exit "Voeg toe" function
-            # Insert the new record into the database
-        placeholders = ', '.join('?' * len(values))
-        cursor.execute(f"INSERT INTO hoorspelen ({', '.join(fields)}) VALUES ({placeholders})", list(values.values()))
-
-def edit_field_value(field_name, current_value):
-    print(f"\nEditing {field_name}: {current_value}")
-    new_value = input("Enter new value: ")  # Simplified for conceptual purposes
-    return new_value
 
 def handle_input(prompt):
     print(prompt, end='', flush=True)
