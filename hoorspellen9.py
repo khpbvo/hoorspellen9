@@ -201,6 +201,38 @@ def validate_date(date_string):
     except ValueError:
         return False
 
+def voeg_toe():
+    conn = sqlite3.connect('hoorspelen.db')
+    cursor = conn.cursor()
+
+    # Fetch the highest current ID from the table
+    cursor.execute('SELECT MAX(id) FROM hoorspelen')
+    max_id = cursor.fetchone()[0]
+    new_id = max_id + 1 if max_id is not None else 1
+
+    # Sample structure for capturing user inputs for each field
+    fields = ['auteur', 'titel', 'regie', 'datum', 'omroep', 'bandnr', 'vertaling', 'duur', 'bewerking', 'genre', 'productie', 'themareeks', 'delen', 'bijzverm', 'taal']
+    record = {}
+
+    for field in fields:
+        # Implement your method for scrolling through fields and capturing user input here.
+        # For simplicity, this example just uses input() function.
+        record[field] = input(f'{field}: ')
+
+    # Add the new_id manually if not using auto-increment
+    record_values = [new_id] + list(record.values())
+
+    # Insert the new record into the database
+    placeholders = ', '.join(['?'] * (len(fields) + 1))  # +1 for the ID field
+    cursor.execute(f'INSERT INTO hoorspelen (id, {", ".join(fields)}) VALUES ({placeholders})', record_values)
+
+    # Commit the changes and close the connection
+    conn.commit()
+    print("Record added successfully. Press Enter to save or Ctrl + S (this functionality needs to be implemented based on your terminal's capabilities).")
+    conn.close()
+
+# You would call voeg_toe() where appropriate in your application
+
 
 def handle_input(prompt):
     print(prompt, end='', flush=True)
