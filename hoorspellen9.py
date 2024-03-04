@@ -65,9 +65,12 @@ def geavanceerd_submenu():
 
 def main_menu():
     logging.debug('This is a debug message')
+    
+    def return_to_menu_callback():
+        main_menu()
     #global db_file
     options = [
-        ("Voeg Toe", lambda: voeg_toe(db_file)),
+        ("Voeg Toe", lambda: voeg_toe(db_file, return_to_menu_callback)),
         ("Bewerk Hoorspellen", lambda: bewerk_hoorspel(db_file)),
         ("Zoek Hoorspellen", lambda: zoek_hoorspellen(db_file)),
         ("Totaal", lambda: toon_totaal_hoorspellen(db_file)),
@@ -201,44 +204,105 @@ def validate_date(date_string):
     except ValueError:
         return False
 
-def voeg_toe():
-    conn = sqlite3.connect('hoorspelen.db')
+def get_input(prompt):
+    print(prompt, end='', flush=True)
+    value = ''
+    while True:
+        char = msvcrt.getch()
+        if char in (b'\r', b'\n'):  # Enter key
+            break
+        elif char == b'\x08':  # Backspace key
+            value = value[:-1]
+            # Reprint the prompt and current value
+            print('\r' + ' ' * (len(prompt) + len(value) + 1) + '\r', end='', flush=True)
+            print(prompt + value, end='', flush=True)
+        elif char == b'\x1b':  # Escape key
+            print("\nExiting input...")
+            return None
+        else:
+            value += char.decode()
+            print(char.decode(), end='', flush=True)
+    print()  # Print a newline
+    return value
+
+def clear_screen():
+    os.system('cls' if os.name == 'nt' else 'clear')
+
+def voeg_toe(db_file, return_to_menu_callback):
+    conn = sqlite3.connect(db_file)
     cursor = conn.cursor()
 
-    # Fetch the highest current ID from the table
     cursor.execute('SELECT MAX(id) FROM hoorspelen')
     max_id = cursor.fetchone()[0]
     new_id = max_id + 1 if max_id is not None else 1
 
-    # Sample structure for capturing user inputs for each field
     fields = ['auteur', 'titel', 'regie', 'datum', 'omroep', 'bandnr', 'vertaling', 'duur', 'bewerking', 'genre', 'productie', 'themareeks', 'delen', 'bijzverm', 'taal']
     record = {}
+    index = 0
 
-    for field in fields:
-        # Implement your method for scrolling through fields and capturing user input here.
-        # For simplicity, this example just uses input() function.
-        record[field] = input(f'{field}: ')
+    while True:
+        clear_screen()
+        for i, field in enumerate(fields):
+            prefix = "->" if i == index else "  "
+            value = record.get(field, "")
+            print(f"{prefix}{field}: {value}")
 
-    # Add the new_id manually if not using auto-increment
-    record_values = [new_id] + list(record.values())
+        key = msvcrt.getch()
+        if key == b'w':
+            index = max(0, index - 1)
+        elif key == b's':
+            index = min(len(fields) - 1, index + 1)
+        elif key == b'e':  # Enter edit mode
+            print('\nEnter value: ', end='')
+            new_value = []
+            while True:
+                char = msvcrt.getch()
+                if char == b'\r':  # Enter key
+                    break
+                elif char == b'\x1b':  # Escape key
+                    print("\nExiting input...")
+                    new_value = None
+                    break
+                elif char == b'\x08':  # Backspace
+                    if new_value:
+                        new_value.pop()
+                        print("\b \b", end='', flush=True)
+                else:
+                    try:
+                        char = char.decode()
+                        if char.isprintable():
+                            new_value.append(char)
+                            print(char, end='', flush=True)
+                    except UnicodeDecodeError:
+                        continue
+            if new_value is not None:
+                record[fields[index]] = ''.join(new_value)
+            elif key == b'd':  # 'd' for done, to save the record
+                # ... code to save the record ...
+                print("Record added successfully. Press any key to continue.")
+                msvcrt.getch()  # Wait for user input before closing
+                conn.close()
+                return_to_menu_callback()  # Call the callback to return to the main menu
+                break
+            # Add the new_id manually if not using auto-increment
+            record_values = [new_id] + [record.get(field, "") for field in fields]
 
-    # Insert the new record into the database
-    placeholders = ', '.join(['?'] * (len(fields) + 1))  # +1 for the ID field
-    cursor.execute(f'INSERT INTO hoorspelen (id, {", ".join(fields)}) VALUES ({placeholders})', record_values)
+            # Insert the new record into the database
+            placeholders = ', '.join(['?'] * (len(fields) + 1))  # +1 for the ID field
+            cursor.execute(f'INSERT INTO hoorspelen (id, {", ".join(fields)}) VALUES ({placeholders})', record_values)
 
-    # Commit the changes and close the connection
-    conn.commit()
-    print("Record added successfully. Press Enter to save or Ctrl + S (this functionality needs to be implemented based on your terminal's capabilities).")
+            # Commit the changes and close the connection
+            conn.commit()
+            print("Record added successfully. Press any key to continue.")
+            msvcrt.getch()  # Wait for user input before closing
+            break  # Exit the while loop after saving
+        elif key == b'\x1b':  # ASCII value for the escape key
+            print("Exiting without saving...")
+            conn.close()
+            break
+
     conn.close()
-
-# You would call voeg_toe() where appropriate in your application
-
-
-def handle_input(prompt):
-    print(prompt, end='', flush=True)
-    user_input = read_input()
-    return user_input
-
+    return_to_menu_callback()  # Call the callback to return to the main menu
 
 def read_input():
     """
@@ -267,6 +331,11 @@ def read_input():
             except UnicodeDecodeError:
                 continue  # Ignore undecodable characters
         sys.stdout.flush()  # Ensure the console is updated
+
+def handle_input(prompt):
+    print(prompt, end='', flush=True)
+    user_input = read_input()
+    return user_input
 
 def bewerk_hoorspel(db_file):
     os.system('cls' if os.name == 'nt' else 'clear')  # Clear the screen
@@ -499,7 +568,6 @@ def parse_input(input_str):
 # Configure logging
 logging.basicConfig(level=logging.DEBUG, filename='app.log', filemode='w',
                     format='%(name)s - %(levelname)s - %(message)s')
-import pdb
 
 # Define valid_fields with the list of fields you want to display
 valid_fields = ["auteur", "titel", "regie", "datum", "omroep", "bandnr", "vertaling", "duur", "bewerking", "genre", "productie", "themareeks", "delen", "bijzverm", "taal"]
