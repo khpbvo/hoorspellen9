@@ -1,4 +1,3 @@
 root - DEBUG - This is a debug message
 googleapiclient.discovery_cache - INFO - file_cache is only supported with oauth2client<4.0.0
 root - DEBUG - This is a debug message
-root - DEBUG - This is a debug message

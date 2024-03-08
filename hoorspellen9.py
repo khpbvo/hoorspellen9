@@ -241,28 +241,32 @@ def voeg_toe(db_file, return_to_menu_callback):
     index = 0
 
     while True:
-        clear_screen()
+        clear_screen()  # Clear screen at the beginning of each loop to reset cursor position
+
         for i, field in enumerate(fields):
-            prefix = "-> " if i == index else "   "
-            value = record.get(field, "")
-            print(f"{prefix}{field}: {value}")
+            if i == index:
+                print(f"-> \033[7m{field}\033[0m: {record.get(field, '')}", end="", flush=True)
+            else:
+                print(f"   {field}: {record.get(field, '')}", end="", flush=True)
+            print()  # Move the cursor to the beginning of the next line
+
+        # Move the cursor back to the line of the selected field
+        print("\033[{}A".format(len(fields) - index), end='', flush=True)
+
+        # Rest of the code...
 
         key = msvcrt.getch()
-        if key == b'\x00' or key == b'\xe0':  # Arrow keys are a two-byte sequence
-            key = msvcrt.getch()  # Get the second byte of the sequence
+        if key == b'\xe0':
+            key = msvcrt.getch()
             if key == b'H':  # Up arrow key
                 index = max(0, index - 1)
             elif key == b'P':  # Down arrow key
                 index = min(len(fields) - 1, index + 1)
-        elif key == b'e':  # Enter edit mode
-            clear_screen()
-            # Display current field and value for editing
-            print(f"-> {fields[index]}: {record.get(fields[index], '')}", end='')
-            new_value = input()  # Use input() to allow editing on the same line
+        elif key == b'\r':
+            new_value = input(f"-> {fields[index]}: {record.get(fields[index], '')}")
             if new_value != '':
                 record[fields[index]] = new_value
-
-        elif key == b'd':  # 'd' for done, to save the record
+        elif key == b'd':
             record_values = [new_id] + [record.get(field, "") for field in fields]
             placeholders = ', '.join(['?'] * (len(fields) + 1))
             cursor.execute(f'INSERT INTO hoorspelen (id, {", ".join(fields)}) VALUES ({placeholders})', record_values)
@@ -272,7 +276,7 @@ def voeg_toe(db_file, return_to_menu_callback):
             conn.close()
             return_to_menu_callback()
             break
-        elif key == b'\x1b':  # Escape key
+        elif key == b'\x1b':
             conn.close()
             return_to_menu_callback()
             break
