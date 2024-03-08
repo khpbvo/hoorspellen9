@@ -243,66 +243,42 @@ def voeg_toe(db_file, return_to_menu_callback):
     while True:
         clear_screen()
         for i, field in enumerate(fields):
-            prefix = "->" if i == index else "  "
+            prefix = "-> " if i == index else "   "
             value = record.get(field, "")
             print(f"{prefix}{field}: {value}")
 
         key = msvcrt.getch()
-        if key == b'w':
-            index = max(0, index - 1)
-        elif key == b's':
-            index = min(len(fields) - 1, index + 1)
+        if key == b'\x00' or key == b'\xe0':  # Arrow keys are a two-byte sequence
+            key = msvcrt.getch()  # Get the second byte of the sequence
+            if key == b'H':  # Up arrow key
+                index = max(0, index - 1)
+            elif key == b'P':  # Down arrow key
+                index = min(len(fields) - 1, index + 1)
         elif key == b'e':  # Enter edit mode
-            print('\nEnter value: ', end='')
-            new_value = []
-            while True:
-                char = msvcrt.getch()
-                if char == b'\r':  # Enter key
-                    break
-                elif char == b'\x1b':  # Escape key
-                    print("\nExiting input...")
-                    new_value = None
-                    break
-                elif char == b'\x08':  # Backspace
-                    if new_value:
-                        new_value.pop()
-                        print("\b \b", end='', flush=True)
-                else:
-                    try:
-                        char = char.decode()
-                        if char.isprintable():
-                            new_value.append(char)
-                            print(char, end='', flush=True)
-                    except UnicodeDecodeError:
-                        continue
-            if new_value is not None:
-                record[fields[index]] = ''.join(new_value)
-            elif key == b'd':  # 'd' for done, to save the record
-                # ... code to save the record ...
-                print("Record added successfully. Press any key to continue.")
-                msvcrt.getch()  # Wait for user input before closing
-                conn.close()
-                return_to_menu_callback()  # Call the callback to return to the main menu
-                break
-            # Add the new_id manually if not using auto-increment
+            clear_screen()
+            # Display current field and value for editing
+            print(f"-> {fields[index]}: {record.get(fields[index], '')}", end='')
+            new_value = input()  # Use input() to allow editing on the same line
+            if new_value != '':
+                record[fields[index]] = new_value
+
+        elif key == b'd':  # 'd' for done, to save the record
             record_values = [new_id] + [record.get(field, "") for field in fields]
-
-            # Insert the new record into the database
-            placeholders = ', '.join(['?'] * (len(fields) + 1))  # +1 for the ID field
+            placeholders = ', '.join(['?'] * (len(fields) + 1))
             cursor.execute(f'INSERT INTO hoorspelen (id, {", ".join(fields)}) VALUES ({placeholders})', record_values)
-
-            # Commit the changes and close the connection
             conn.commit()
-            print("Record added successfully. Press any key to continue.")
-            msvcrt.getch()  # Wait for user input before closing
-            break  # Exit the while loop after saving
-        elif key == b'\x1b':  # ASCII value for the escape key
-            print("Exiting without saving...")
+            print("\nRecord added successfully. Press any key to continue.")
+            msvcrt.getch()
             conn.close()
+            return_to_menu_callback()
+            break
+        elif key == b'\x1b':  # Escape key
+            conn.close()
+            return_to_menu_callback()
             break
 
     conn.close()
-    return_to_menu_callback()  # Call the callback to return to the main menu
+    return_to_menu_callback()
 
 def read_input():
     """
