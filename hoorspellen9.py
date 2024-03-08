@@ -229,12 +229,17 @@ def clear_screen():
     os.system('cls' if os.name == 'nt' else 'clear')
 
 def voeg_toe(db_file, return_to_menu_callback):
+    logging.debug('voeg_toe called with db_file=%s', db_file)
+
     conn = sqlite3.connect(db_file)
     cursor = conn.cursor()
 
     cursor.execute('SELECT MAX(id) FROM hoorspelen')
     max_id = cursor.fetchone()[0]
     new_id = max_id + 1 if max_id is not None else 1
+    
+    logging.debug('new_id=%s', new_id)
+
 
     fields = ['auteur', 'titel', 'regie', 'datum', 'omroep', 'bandnr', 'vertaling', 'duur', 'bewerking', 'genre', 'productie', 'themareeks', 'delen', 'bijzverm', 'taal']
     record = {}
@@ -271,6 +276,8 @@ def voeg_toe(db_file, return_to_menu_callback):
             placeholders = ', '.join(['?'] * (len(fields) + 1))
             cursor.execute(f'INSERT INTO hoorspelen (id, {", ".join(fields)}) VALUES ({placeholders})', record_values)
             conn.commit()
+            logging.debug('Record added: %s', record_values)
+
             clear_screen()
             #print("\033[1A", end='', flush=True)
             print("\033[1A","Record added successfully. Press any key to continue.", end='', flush=True)
@@ -603,9 +610,9 @@ def zoek_hoorspellen(db_file):
             logging.debug(f"field2: {field2}, searchword2: {searchword2}")
 
             offset = 0
-            limit = 1
+            limit = 200
 
-            try:# Limit the number of results per page
+            try:
                 logging.debug(f"Executing search with field1={field1}, searchword1={searchword1}, field2={field2}, searchword2={searchword2}")
                 results = execute_search(db_file, field1, searchword1, field2, searchword2, offset=offset, limit=limit)
             except sqlite3.OperationalError as e:
@@ -617,6 +624,7 @@ def zoek_hoorspellen(db_file):
 
             if not results:
                 logging.debug("No results found for the search criteria")
+                clear_screen()
                 print("Geen resultaten gevonden. Druk op ENTER om door te gaan of ESCAPE om te stoppen.")
                 action_key = msvcrt.getch()
                 if action_key == b'\x1b':  # ESC key
@@ -628,37 +636,43 @@ def zoek_hoorspellen(db_file):
             current_attribute = 0  # Start enumeration from 1
             logging.debug("Starting the record viewing loop")
             while True:
-                    clear_screen()
-                    for index, attribute in enumerate(valid_fields, start=0):
-                        value = results[current_record][index - 0]  # Adjusted index
-                        if index == current_attribute:
-                            print(f"-> {attribute}: {value}")
-                        else:
-                            print(f"   {attribute}: {value}")
-                    print("\033[{}A\033[{}C".format(len(valid_fields) - current_attribute, len(f"-> {valid_fields[current_attribute]}: {results[current_record][current_attribute]}")), end='', flush=True)
+                clear_screen()
+                for index, attribute in enumerate(valid_fields, start=0):
+                    value = results[current_record][index - 0]  # Adjusted index
+                    if index == current_attribute:
+                        print(f"-> {attribute}: {value}")
+                    else:
+                        print(f"   {attribute}: {value}")
+                print("\033[{}A\033[{}C".format(len(valid_fields) - current_attribute, len(f"-> {valid_fields[current_attribute]}: {results[current_record][current_attribute]}")), end='', flush=True)
+                key = msvcrt.getch()
+                if key in [b'\x00', b'\xe0']:  # Arrow keys are preceded by these bytes
                     key = msvcrt.getch()
-                    if key in [b'\x00', b'\xe0']:  # Arrow keys are preceded by these bytes
-                        key = msvcrt.getch()
-                    if key == b'H':  # Up arrow key
-                        current_attribute = (current_attribute - 1) % len(valid_fields)  # Wrap around using modulo
-                    elif key == b'P':  # Down arrow key
-                        current_attribute = (current_attribute + 1) % len(valid_fields)  # Wrap around using modulo
-                    elif key == b'e':  # 'e' key for edit
-                        logging.debug("Edit key pressed - editing current field")
-                        if valid_fields[current_attribute] == "id":
-                            print("The 'id' field is not editable.")
-                        else:
-                            try:
-                                # Subtract 1 from current_attribute to get the correct index for the results list
-                                edit_current_field(db_file, current_record, current_attribute, valid_fields, results)
-                                # Refresh results after editing
-                                results = execute_search(db_file, field1, searchword1, field2, searchword2, offset=offset, limit=limit)
-                            except Exception as e:
-                                logging.error(f"Error in edit_current_field: {e}")
-                                print(f"Error in edit_current_field: {e}")
-                    elif key == b'\x1b':  # Escape key
-                        logging.debug("Escape key pressed - returning to search prompt")
-                        break  # Break out of the inner loop to go back to the search prompt
+                if key == b'H':  # Up arrow key
+                    current_attribute = (current_attribute - 1) % len(valid_fields)  # Wrap around using modulo
+                elif key == b'P':  # Down arrow key
+                    current_attribute = (current_attribute + 1) % len(valid_fields)  # Wrap around using modulo
+                elif key == b'M':  # Right arrow key
+                    if current_record < len(results) - 1:
+                        current_record += 1
+                        #current_attribute = 0  # Reset attribute index when changing records
+                elif key == b'K':  # Left arrow key
+                    if current_record > 0:
+                        current_record -= 1
+                        #current_attribute = 0  # Reset attribute index when changing records
+                elif key == b'e':  # 'e' key for edit
+                    logging.debug("Edit key pressed - editing current field")
+                    if valid_fields[current_attribute] == "id":
+                        print("The 'id' field is not editable.")
+                    else:
+                        try:
+                            edit_current_field(db_file, current_record, current_attribute, valid_fields, results)
+                            results = execute_search(db_file, field1, searchword1, field2, searchword2, offset=offset, limit=limit)
+                        except Exception as e:
+                            logging.error(f"Error in edit_current_field: {e}")
+                            print(f"Error in edit_current_field: {e}")
+                elif key == b'\x1b':  # Escape key
+                    logging.debug("Escape key pressed - returning to search prompt")
+                    break  # Break out of the inner loop to go back to the search prompt
             
     except Exception as e:
         logging.error(f"An error occurred: {e}")
