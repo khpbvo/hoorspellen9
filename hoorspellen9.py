@@ -267,10 +267,31 @@ def voeg_toe(db_file, return_to_menu_callback):
                 index = max(0, index - 1)
             elif key == b'P':  # Down arrow key
                 index = min(len(fields) - 1, index + 1)
+
         elif key == b'\r':
-            new_value = input(f"-> {fields[index]}: {record.get(fields[index], '')}")
+            new_value = ""
+            while True:
+                clear_screen()
+                for i, field in enumerate(fields):
+                    if i == index:
+                        print(f"-> \033[7m{field}\033[0m: {new_value or record.get(field, '')}", end="", flush=True)
+                    else:
+                        print(f"   {field}: {record.get(field, '')}", end="", flush=True)
+                    print()
+                print("\033[{}A".format(len(fields) - index), end='', flush=True)
+                key = msvcrt.getch()
+                if key == b'\r':  # Enter key
+                    break
+                elif key == b'\x1b':  # Escape key
+                    new_value = record.get(fields[index], '')  # Reset the value
+                    break
+                elif key == b'\x08':  # Backspace key
+                    new_value = new_value[:-1]
+                elif key != b'\xe0':  # Ignore special keys
+                    new_value += key.decode()
             if new_value != '':
                 record[fields[index]] = new_value
+
         elif key == b'd':
             record_values = [new_id] + [record.get(field, "") for field in fields]
             placeholders = ', '.join(['?'] * (len(fields) + 1))
@@ -435,8 +456,9 @@ def save_changes_to_database(db_file, record_id, field_name, new_value):
 
 def edit_current_field(db_file, current_record, current_attribute, attribute_names, results):
     clear_screen()
-    print(f"\nEdit mode: {attribute_names[current_attribute]}. Current value: {results[current_record][current_attribute]}")
-    print("Type the new value and press ENTER. Press ESCAPE to cancel.")
+    # Display the initial prompt with oud (old value) and nieuw (new value) placeholders
+    old_value = results[current_record][current_attribute]
+    print(f"\nEdit mode: {attribute_names[current_attribute]}. oud:{old_value}, nieuw:", end='', flush=True)
     
     new_value = []
     while True:
@@ -447,7 +469,7 @@ def edit_current_field(db_file, current_record, current_attribute, attribute_nam
         elif key == b'\x1b':  # Escape key
             clear_screen()
             print("\nEdit canceled.")
-            break
+            return  # Exit the function early if edit is canceled
         elif key == b'\x08':  # Backspace
             if new_value:
                 new_value.pop()
@@ -460,32 +482,24 @@ def edit_current_field(db_file, current_record, current_attribute, attribute_nam
                     print(char, end='', flush=True)  # Display the character
             except UnicodeDecodeError:
                 continue  # Ignore undecodable characters
-    
 
-    # Zorg ervoor dat deze variabelen buiten de while loop, maar binnen de functie scope worden gedefinieerd
+    # Proceed with saving changes and other logic after input is complete
     field_name = attribute_names[current_attribute]
-    record_id = results[current_record][0]  # Aannemende dat de ID altijd op index 0 staat in je results
-    # Voorbeeld logica direct voor het aanroepen van save_changes_to_database 
-    print(f"Attempting to update record ID: {record_id} with {field_name} = {new_value_str}")
+    record_id = results[current_record][0]  # Assuming the ID is always at index 0 in your results
 
-    # Controleer of new_value_str niet leeg is voordat je de update doet
     if new_value_str:
-        print("Before calling save_changes_to_database")
+        print(f"\nAttempting to update record ID: {record_id} with {field_name} = {new_value_str}")
         save_changes_to_database(db_file, record_id, field_name, new_value_str)
-        print("\nChanges saved.")
+        print("Changes saved.")
     else:
         print("\nNo changes made.")
 
-    input("\nPress any key to continue...")  # Wacht op gebruikersinput voordat je verdergaat
+    input("\nPress any key to continue...")  # Wait for user input before proceeding
     clear_screen()
 
-    
     # Clear screen and re-print the updated record for continuity
-    clear_screen()
     for index, attribute in enumerate(attribute_names):
         print(f"   {attribute}: {results[current_record][index]}")
-    # Position the cursor back to the start of the line where the selected attribute is
-    print(f"\033[{len(attribute_names) - current_attribute}A\r-> {attribute_names[current_attribute]}: {results[current_record][current_attribute]}\033[K", end='', flush=True)
 
 # Corrects a field name based on the list of valid fields
 def correct_field_name(field):
@@ -654,11 +668,11 @@ def zoek_hoorspellen(db_file):
                 elif key == b'M':  # Right arrow key
                     if current_record < len(results) - 1:
                         current_record += 1
-                        #current_attribute = 0  # Reset attribute index when changing records
+                        current_attribute = 0  # Reset attribute index when changing records
                 elif key == b'K':  # Left arrow key
                     if current_record > 0:
                         current_record -= 1
-                        #current_attribute = 0  # Reset attribute index when changing records
+                        current_attribute = 0  # Reset attribute index when changing records
                 elif key == b'e':  # 'e' key for edit
                     logging.debug("Edit key pressed - editing current field")
                     if valid_fields[current_attribute] == "id":
