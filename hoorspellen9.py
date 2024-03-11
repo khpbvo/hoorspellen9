@@ -31,7 +31,7 @@ db_file = 'hoorspel.db'
 
 logging.basicConfig(level=logging.DEBUG, filename='app.log', filemode='w',
                     format='%(name)s - %(levelname)s - %(message)s')
-logging.debug('This is a debug message')
+
 
 def geavanceerd_submenu():
     options = [
@@ -64,8 +64,6 @@ def geavanceerd_submenu():
             current_option = (current_option + 1) % len(options)  # Move down in the list
 
 def main_menu():
-    logging.debug('This is a debug message')
-    
     def return_to_menu_callback():
         main_menu()
     #global db_file
@@ -237,79 +235,59 @@ def voeg_toe(db_file, return_to_menu_callback):
     cursor.execute('SELECT MAX(id) FROM hoorspelen')
     max_id = cursor.fetchone()[0]
     new_id = max_id + 1 if max_id is not None else 1
-    
+
     logging.debug('new_id=%s', new_id)
 
-
     fields = ['auteur', 'titel', 'regie', 'datum', 'omroep', 'bandnr', 'vertaling', 'duur', 'bewerking', 'genre', 'productie', 'themareeks', 'delen', 'bijzverm', 'taal']
-    record = {}
+    record = {field: "" for field in fields}
+    cursor_positions = {field: 0 for field in fields}  # Track cursor position for each field
     index = 0
 
-    while True:
-        clear_screen()  # Clear screen at the beginning of each loop to reset cursor position
-
+    def print_form():
+        clear_screen()
         for i, field in enumerate(fields):
-            if i == index:
-                print(f"-> \033[7m{field}\033[0m: {record.get(field, '')}", end="", flush=True)
-            else:
-                print(f"   {field}: {record.get(field, '')}", end="", flush=True)
-            print()  # Move the cursor to the beginning of the next line
+            prefix = "->" + field + ": " if i == index else "   " + field + ": "
+            field_text = record[field]
+            print(f"{prefix}{field_text}")
+        # Move cursor up to the line of the current field
+        print('\033[F' * (len(fields) - index), end='')  
+        # Move cursor right to the end of "->field: " text and the input text
+        print('\033[C' * (len('->') + len(fields[index]) + len(': ') + len(record[fields[index]])), end='', flush=True)
 
-        # Move the cursor back to the line of the selected field
-        print("\033[{}A".format(len(fields) - index), end='', flush=True)
-
-        # Rest of the code...
+    while True:
+        print_form()
 
         key = msvcrt.getch()
-        if key == b'\xe0':
+        if key == b'\xe0':  # Arrow keys
             key = msvcrt.getch()
             if key == b'H':  # Up arrow key
                 index = max(0, index - 1)
             elif key == b'P':  # Down arrow key
                 index = min(len(fields) - 1, index + 1)
-
-        elif key == b'\r':
-            new_value = ""
-            while True:
-                clear_screen()
-                for i, field in enumerate(fields):
-                    if i == index:
-                        print(f"-> \033[7m{field}\033[0m: {new_value or record.get(field, '')}", end="", flush=True)
-                    else:
-                        print(f"   {field}: {record.get(field, '')}", end="", flush=True)
-                    print()
-                print("\033[{}A".format(len(fields) - index), end='', flush=True)
-                key = msvcrt.getch()
-                if key == b'\r':  # Enter key
-                    break
-                elif key == b'\x1b':  # Escape key
-                    new_value = record.get(fields[index], '')  # Reset the value
-                    break
-                elif key == b'\x08':  # Backspace key
-                    new_value = new_value[:-1]
-                elif key != b'\xe0':  # Ignore special keys
-                    new_value += key.decode()
-            if new_value != '':
-                record[fields[index]] = new_value
-
-        elif key == b'd':
-            record_values = [new_id] + [record.get(field, "") for field in fields]
+        elif key == b'd':  # Save record
+            record_values = [new_id] + [record[field] for field in fields]
             placeholders = ', '.join(['?'] * (len(fields) + 1))
             cursor.execute(f'INSERT INTO hoorspelen (id, {", ".join(fields)}) VALUES ({placeholders})', record_values)
             conn.commit()
             logging.debug('Record added: %s', record_values)
-
-            clear_screen()
-            #print("\033[1A", end='', flush=True)
-            print("\033[1A","Record added successfully. Press any key to continue.", end='', flush=True)
+            print("Record added successfully. Press any key to continue.")
             msvcrt.getch()
-            conn.close()
-            return_to_menu_callback()
             break
-        elif key == b'\x1b':
-            conn.close()
-            return_to_menu_callback()
+        elif key == b'\x1b':  # Escape key
             break
+        elif key == b'\x08':  # Backspace
+            field = fields[index]
+            if cursor_positions[field] > 0:
+                # Remove character at cursor position - 1 and move cursor back
+                record[field] = record[field][:cursor_positions[field] - 1] + record[field][cursor_positions[field]:]
+                cursor_positions[field] -= 1
+        else:
+            field = fields[index]
+            char = key.decode() if key else ''
+            if char.isprintable():
+                # Insert character at cursor position and move cursor forward
+                record[field] = record[field][:cursor_positions[field]] + char + record[field][cursor_positions[field]:]
+                cursor_positions[field] += 1
 
     conn.close()
     return_to_menu_callback()
