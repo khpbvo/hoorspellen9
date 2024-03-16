@@ -1,4 +1,2 @@
 googleapiclient.discovery_cache - INFO - file_cache is only supported with oauth2client<4.0.0
-root - DEBUG - voeg_toe called with db_file=hoorspel.db
-root - DEBUG - new_id=128280
 googleapiclient.discovery - DEBUG - URL being requested: POST https://gmail.googleapis.com/gmail/v1/users/me/messages/send?alt=json

@@ -713,15 +713,19 @@ def geschiedenis(db_file):
     current_attribute = 0
     attribute_names = [description[0] for description in cursor.description]
 
-    while True:
-        clear_screen()
-        print("Geschiedenis (Laatste 10 toevoegingen):")
-        for index, attribute in enumerate(attribute_names):
-            print(f"   {attribute}: {results[current_record][index]}")
+    # ...
 
-        # Correctly position the cursor to highlight the selected attribute without duplicating it
-        # The fix is to clear the screen and reprint everything each time, then move the cursor
-        print(f"\033[{len(attribute_names) - current_attribute}A\r-> {attribute_names[current_attribute]}: {results[current_record][current_attribute]}\033[K", end='', flush=True)
+    while True:
+        os.system('cls' if os.name == 'nt' else 'clear')  # Clear the console
+
+        for index, attribute in enumerate(attribute_names):
+            if index == current_attribute:
+                print(f"-> {attribute}: {results[current_record][index]}\n", end='', flush=True)
+            else:
+                print(f"   {attribute}: {results[current_record][index]}")
+
+        # Move the cursor back to the line of the selected field
+        print("\033[{}A".format(len(attribute_names) - current_attribute), end='', flush=True)
 
         key = msvcrt.getch()
         if key in [b'\x00', b'\xe0']:
@@ -741,6 +745,9 @@ def geschiedenis(db_file):
             if current_record > 0:
                 current_record -= 1
                 current_attribute = 0  # Reset attribute index when changing records
+
+        # Move the cursor back to the top of the screen before the next loop iteration
+        print(f"\033[{len(attribute_names)}A", end='', flush=True)
 
     conn.close()
     clear_screen()
