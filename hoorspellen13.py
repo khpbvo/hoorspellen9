@@ -486,11 +486,11 @@ def edit_current_field(db_file, current_record, current_attribute, attribute_nam
     if new_value_str:
         print(f"\nAttempting to update record ID: {record_id} with {field_name} = {new_value_str}")
         save_changes_to_database(db_file, record_id, field_name, new_value_str)
-        print("Changes saved.")
+        print("Wijzigingen opgeslagen.")
     else:
-        print("\nNo changes made.")
+        print("\nGeen wijzigingen.")
 
-    input("\nPress any key to continue...")  # Wait for user input before proceeding
+    input("\nDruk op Enter...")  # Wait for user input before proceeding
     clear_screen()
 
     for index, attribute in enumerate(attribute_names):
@@ -605,7 +605,7 @@ def zoek_hoorspellen(db_file):
             except sqlite3.OperationalError as e:
                 logging.error(f"Zoekopdracht mislukt: {e}")
                 clear_screen()
-                print("\nVerkeerd formaat. Gebruik 'veld:waarde'. Druk op ENTER om verder te gaan.", end='')
+                print("\nEr is iets fout gegaan. Druk op ENTER om verder te gaan.", end='')
                 input()
                 continue
 
@@ -808,7 +808,7 @@ def gmail_service():
 
     return service
 # Path to your credentials JSON file
-CREDENTIALS_FILE = 'C:\\Users\\kevinvanosch\\Desktop\\hoorspellen\\client_secret_909008488627-c1gda8u30p8ssck0rsrcrs46p88mimb2.apps.googleusercontent.com.json'
+CREDENTIALS_FILE = 'client_secret_909008488627-c1gda8u30p8ssck0rsrcrs46p88mimb2.apps.googleusercontent.com.json'
 
 # If modifying these SCOPES, delete the file token.json.
 SCOPES = ['https://www.googleapis.com/auth/gmail.send']
