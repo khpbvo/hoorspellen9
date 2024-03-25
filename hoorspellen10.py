@@ -724,15 +724,25 @@ def geschiedenis(db_file):
     attribute_names = [description[0] for description in cursor.description]
 
     while True:
-        clear_screen()
-        print("Geschiedenis (Laatste 10 toevoegingen):")
-        for index, attribute in enumerate(attribute_names):
-            print(f"   {attribute}: {results[current_record][index]}")
+        # Clear the screen
+        print('\033c', end='')
 
-        # Correctly position the cursor to highlight the selected attribute without duplicating it
-        # The fix is to clear the screen and reprint everything each time, then move the cursor
-        print(f"\033[{len(attribute_names) - current_attribute}A\r-> {attribute_names[current_attribute]}: {results[current_record][current_attribute]}\033[K", end='', flush=True)
+        # Redraw the entire screen
+        cursor_position = 0
+        for i, attribute_name in enumerate(attribute_names):
+            if i == current_attribute:
+                # Highlight the current attribute
+                print(f"-> {attribute_name}: {results[current_record][i]}\033[K")
+                cursor_position = len('-> ' + attribute_name + ': ' + str(results[current_record][i]))
+            else:
+                # Print the other attributes normally
+                print(f"{attribute_name}: {results[current_record][i]}\033[K")
 
+        # Move the cursor to the line of the current attribute
+        print(f"\033[{len(attribute_names) - current_attribute}A", end='', flush=True)
+
+        # Move the cursor to the right to the end of the current attribute
+        print(f"\033[{cursor_position}C", end='', flush=True)
         key = msvcrt.getch()
         if key in [b'\x00', b'\xe0']:
             key = msvcrt.getch()
