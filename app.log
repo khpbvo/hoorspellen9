@@ -1,1 +1,2 @@
 googleapiclient.discovery_cache - INFO - file_cache is only supported with oauth2client<4.0.0
+googleapiclient.discovery - DEBUG - URL being requested: POST https://gmail.googleapis.com/gmail/v1/users/me/messages/send?alt=json

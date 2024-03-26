@@ -196,8 +196,7 @@ def initialize_db(db_file):
 
 def validate_date(date_string):
     try:
-        # Parse the date string to validate if it's in a valid format
-        datetime.datetime.strptime(date_string, '%Y/%m/%d')
+        datetime.strptime(date_string, '%Y/%m/%d')  # Validate date format
         return True
     except ValueError:
         return False
@@ -737,18 +736,24 @@ def geschiedenis(db_file):
             if current_record > 0:
                 current_record -= 1
                 current_attribute = 0
+        
         elif key == b'e':  # Edit mode
+            clear_screen()
             if attribute_names[current_attribute] == 'id':  # Skip if the attribute is 'id'
                 continue
-            print('\033c', end='')
-            print(f"{attribute_names[current_attribute]}: ", end='')
-            new_value = input()
+            new_value = get_input(f"{attribute_names[current_attribute]}: ")
+            if attribute_names[current_attribute] == 'datum':
+                if not validate_date(new_value):
+                    # Clear current line
+                    print('\033[2K', end='')  
+                    input("Verkeerd formaat datum YYYY/MM/DD. Druk op ENTER...")
+                    continue
             cursor.execute(f"UPDATE hoorspelen SET {attribute_names[current_attribute]} = ? WHERE id = ?", (new_value, results[current_record][0]))
             conn.commit()
             results[current_record][current_attribute] = new_value
-
-    conn.close()
-    clear_screen()
+            logging.info(f"Updated {attribute_names[current_attribute]} to {new_value} for id {results[current_record][0]}")
+            conn.close()
+        clear_screen()
 
 def export_function(db_file):
     timestamp = datetime.datetime.now().strftime("%d-%m-%Y_%H-%M")  # Replacing ':' with '_'
