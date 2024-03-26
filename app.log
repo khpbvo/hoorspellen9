@@ -1,2 +1,7 @@
+google.auth.transport.requests - DEBUG - Making request: POST https://oauth2.googleapis.com/token
+urllib3.connectionpool - DEBUG - Starting new HTTPS connection (1): oauth2.googleapis.com:443
+urllib3.connectionpool - DEBUG - https://oauth2.googleapis.com:443 "POST /token HTTP/1.1" 200 None
 googleapiclient.discovery_cache - INFO - file_cache is only supported with oauth2client<4.0.0
+root - DEBUG - voeg_toe called with db_file=hoorspel.db
+root - DEBUG - new_id=128284
 googleapiclient.discovery - DEBUG - URL being requested: POST https://gmail.googleapis.com/gmail/v1/users/me/messages/send?alt=json

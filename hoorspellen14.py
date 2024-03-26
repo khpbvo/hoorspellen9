@@ -428,10 +428,6 @@ valid_fields = [
     "themareeks", "delen", "bijzverm", "taal"
 ]
 
-# Clears the terminal screen
-def clear_screen():
-    os.system('cls' if os.name == 'nt' else 'clear')
-
 def save_changes_to_database(db_file, record_id, field_name, new_value):
     print("save changes to database")
     try:
@@ -566,10 +562,6 @@ logging.basicConfig(level=logging.DEBUG, filename='app.log', filemode='w',
 
 # Define valid_fields with the list of fields you want to display
 valid_fields = ["auteur", "titel", "regie", "datum", "omroep", "bandnr", "vertaling", "duur", "bewerking", "genre", "productie", "themareeks", "delen", "bijzverm", "taal"]
-
-# Placeholder for the clear_screen function.
-def clear_screen():
-    os.system('cls' if os.name == 'nt' else 'clear')
 
 def zoek_hoorspellen(db_file):
     clear_screen()
