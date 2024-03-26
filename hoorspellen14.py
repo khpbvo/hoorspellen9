@@ -730,7 +730,7 @@ def geschiedenis(db_file):
             # Print the pointer, attribute name, and value separately
             pointer = '->' if index == current_attribute else '  '
             print(f"{pointer} {attribute:<{max_length}}", end=': ')
-            print(results[current_record][index])
+            print(results[current_record][index], end='')  # Do not end with a newline
 
         # Get the key press
         key = msvcrt.getch()
@@ -762,10 +762,13 @@ def geschiedenis(db_file):
             conn.commit()
             results[current_record][current_attribute] = new_value
 
-        # Move the cursor to the end of the current line
-        x = max_length + 6 + len(str(results[current_record][current_attribute]))
-        y = current_attribute + 2  # Adjusted indentation
-        move_cursor(y, x)
+            # Move the cursor to the end of the current line
+            x = max_length + 6 + len(str(results[current_record][index]))
+            y = index + 2
+            move_cursor(y, x)
+
+            # Move the cursor to the next line
+            move_cursor(y + 1, 0)
         print()
 
     set_cursor_visibility(True)
