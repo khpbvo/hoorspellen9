@@ -1,7 +1,6 @@
 import sys
 import msvcrt
 import sqlite3
-import os
 import csv
 import datetime
 import certifi
@@ -15,8 +14,6 @@ import os
 from email.mime.multipart import MIMEMultipart
 from email.mime.base import MIMEBase
 from email import encoders
-import pickle
-import os.path
 from google.auth.transport.requests import Request
 import pickle
 import os.path
@@ -24,6 +21,7 @@ import mimetypes
 import logging
 import difflib
 import re
+import time
 
 os.environ['SSL_CERT_FILE'] = certifi.where()
 
@@ -105,8 +103,7 @@ def main_menu():
                 sys.exit()
             else:
                 options[current_option][1]() # Execute the selected option's function  # Execute the selected option's function
-                os.system('cls' if os.name == 'nt' else 'clear')
-                
+                os.system('cls' if os.name == 'nt' else 'clear')  # Clear the screen after returning from the function
 def import_function(db_file):
     filename = input("Voer het pad naar het CSV-bestand in: ")
     try:
@@ -419,7 +416,6 @@ def bewerk_hoorspel(db_file):
     input("Druk op Enter om verder te gaan...")
     os.system('cls' if os.name == 'nt' else 'clear')  # Clear the screen again before returning to the menu
 
-# Other parts of your script remain unchanged...
 valid_fields = [
     "id", "auteur", "titel", "regie", "datum", "omroep", "bandnr",
     "vertaling", "duur", "bewerking", "genre", "productie",
@@ -480,7 +476,7 @@ def edit_current_field(db_file, current_record, current_attribute, attribute_nam
     # Rest of the function remains unchanged...
 
     field_name = attribute_names[current_attribute]
-    record_id = results[current_record][0]  # Assuming the ID is always at index 0 in your results
+    record_id = results[current_record][0]  # Assuming the ID is always at index 0 in results
 
     if new_value_str:
         print(f"\nAttempting to update record ID: {record_id} with {field_name} = {new_value_str}")
@@ -504,7 +500,7 @@ def correct_field_name(field):
 
 def execute_search(db_file, search_term, offset, limit, specific_field=None):
     logging.debug("Starting execute_search function")
-    
+    logging.info(f"Executing search with search term: {search_term}, offset: {offset}, limit: {limit}, specific_field: {specific_field}")
     try:
         conn = sqlite3.connect(db_file)
         cursor = conn.cursor()
@@ -562,7 +558,7 @@ def zoek_hoorspellen(db_file):
         while True:
             logging.debug("Prompting for search input")
             clear_screen()
-            print("Voer zoekterm in (of 'veld:zoekwoord' voor specifiek veld): ", end='', flush=True)
+            print("Voer zoekterm in of veld:zoekwoord", end='', flush=True)
             search_term = ''
             specific_field = None
             while True:
@@ -645,7 +641,7 @@ def zoek_hoorspellen(db_file):
                 elif key == b'e':  # 'e' key for edit
                     logging.debug("Edit key pressed - editing current field")
                     if valid_fields[current_attribute] == "id":
-                        print("The 'id' field is not editable.")
+                        print("Het 'id' veld is niet bewerkbaar.")
                     else:
                         try:
                             edit_current_field(db_file, current_record, current_attribute, valid_fields, results)
@@ -681,7 +677,7 @@ def toon_totaal_hoorspellen(db_file='hoorspel.db'):
     conn.close()
 
     clear_screen()
-    input(f"Totaal aantal hoorspellen: {total}. Druk op Enter om terug te gaan naar het hoofdmenu...")
+    input(f"Totaal aantal hoorspellen: {total}. Druk op Enter.")
     clear_screen() #     
 
 # De gesciedenis functie in het hoofdmenu. Laat de laatste 10 toegevoegde records zien.
@@ -690,9 +686,11 @@ def geschiedenis(db_file):
     conn = sqlite3.connect(db_file)
     cursor = conn.cursor()
 
-    cursor.execute("SELECT * FROM hoorspelen ORDER BY id ASC LIMIT 10")
+    # Change the SQL query to order by 'id' in descending order
+    cursor.execute("SELECT * FROM hoorspelen ORDER BY id DESC LIMIT 10")
     results = cursor.fetchall()
-    results = [list(item) for item in reversed(results)]  # Convert each tuple to a list
+    # If you want to display the results starting with the most recent, you can reverse the list here
+    results = [list(item) for item in reversed(results)]  # This line ensures the most recent entry is shown first
 
     if not results:
         print("Geen hoorspelen gevonden.")
@@ -702,6 +700,8 @@ def geschiedenis(db_file):
     current_record = 0
     current_attribute = 0
     attribute_names = [description[0] for description in cursor.description]
+
+    # The rest of your code remains unchanged...
 
     while True:
         print('\033c', end='')
@@ -724,14 +724,30 @@ def geschiedenis(db_file):
             current_attribute = (current_attribute - 1) % len(attribute_names)
         elif key == b'P':
             current_attribute = (current_attribute + 1) % len(attribute_names)
-        elif key == b'M':
+
+        elif key == b'M':  # Right arrow key
             if current_record < len(results) - 1:
                 current_record += 1
                 current_attribute = 0
-        elif key == b'K':
+            else:
+                clear_screen()
+                # Display "Einde zoekresultaten" when reaching the end of the records on the right
+                print('\033[2K', end='')  # Clear the line
+                print('\rEinde zoekresultaten', end='', flush=True)
+                time.sleep(5)  # Pause for a moment to let the user read the message
+                print('\r\033[2K', end='')  # Clear the message and return cursor to start of line
+
+        elif key == b'K':  # Left arrow key
             if current_record > 0:
                 current_record -= 1
                 current_attribute = 0
+            else:
+                clear_screen()
+                # Display "Einde zoekresultaten" when reaching the end of the records on the left
+                print('\033[2K', end='')  # Clear the line
+                print('\rEinde zoekresultaten', end='', flush=True)
+                time.sleep(5)  # Pause for a moment to let the user read the message
+                print('\r\033[2K', end='')  # Clear the message and return cursor to start of line
         
         elif key == b'e':  # Edit mode
             clear_screen()
