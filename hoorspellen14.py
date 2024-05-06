@@ -24,7 +24,6 @@ import mimetypes
 import logging
 import difflib
 import re
-import ctypes
 
 os.environ['SSL_CERT_FILE'] = certifi.where()
 
@@ -197,8 +196,7 @@ def initialize_db(db_file):
 
 def validate_date(date_string):
     try:
-        # Parse the date string to validate if it's in a valid format
-        datetime.datetime.strptime(date_string, '%Y/%m/%d')
+        datetime.strptime(date_string, '%Y/%m/%d')  # Validate date format
         return True
     except ValueError:
         return False
@@ -428,6 +426,10 @@ valid_fields = [
     "themareeks", "delen", "bijzverm", "taal"
 ]
 
+# Clears the terminal screen
+def clear_screen():
+    os.system('cls' if os.name == 'nt' else 'clear')
+
 def save_changes_to_database(db_file, record_id, field_name, new_value):
     print("save changes to database")
     try:
@@ -500,38 +502,25 @@ def correct_field_name(field):
     matches = difflib.get_close_matches(field, valid_fields, n=1, cutoff=0.6)
     return matches[0] if matches else None
 
-def execute_search(db_file, search_term, offset, limit):
+def execute_search(db_file, search_term, offset, limit, specific_field=None):
     logging.debug("Starting execute_search function")
     
     try:
-        # Connect to the SQLite database
         conn = sqlite3.connect(db_file)
         cursor = conn.cursor()
         logging.info(f"Connected to database: {db_file}")
 
-        # Initialize the query and params
-        query = "SELECT * FROM hoorspelen WHERE "
-        params = []
+        if specific_field and specific_field in valid_fields:
+            query = f"SELECT * FROM hoorspelen WHERE {specific_field} LIKE ? LIMIT ? OFFSET ?"
+            params = [f"%{search_term}%", limit, offset]
+        else:
+            query = "SELECT * FROM hoorspelen WHERE " + " OR ".join([f"{field} LIKE ?" for field in valid_fields]) + " LIMIT ? OFFSET ?"
+            params = [f"%{search_term}%"] * len(valid_fields) + [limit, offset]
 
-        # Add conditions for each field
-        for field in valid_fields:
-            query += f"{field} LIKE ? OR "
-            params.append(f"%{search_term}%")
-
-        # Remove the last " OR " from the query
-        query = query[:-4]
-
-        # Add LIMIT and OFFSET to the query to handle pagination
-        query += " LIMIT ? OFFSET ?"
-        params.extend([limit, offset])
-        logging.debug("Added LIMIT and OFFSET to the query")
-
-        # Execute the query
         cursor.execute(query, params)
         results = cursor.fetchall()
         logging.info("Query executed successfully")
 
-        # Close the connection to the database
         conn.close()
         logging.debug("Database connection closed")
 
@@ -563,14 +552,19 @@ logging.basicConfig(level=logging.DEBUG, filename='app.log', filemode='w',
 # Define valid_fields with the list of fields you want to display
 valid_fields = ["auteur", "titel", "regie", "datum", "omroep", "bandnr", "vertaling", "duur", "bewerking", "genre", "productie", "themareeks", "delen", "bijzverm", "taal"]
 
+# Placeholder for the clear_screen function.
+def clear_screen():
+    os.system('cls' if os.name == 'nt' else 'clear')
+
 def zoek_hoorspellen(db_file):
     clear_screen()
     try:
         while True:
             logging.debug("Prompting for search input")
             clear_screen()
-            print("Voer zoekterm in: ", end='', flush=True)
+            print("Voer zoekterm in (of 'veld:zoekwoord' voor specifiek veld): ", end='', flush=True)
             search_term = ''
+            specific_field = None
             while True:
                 char = msvcrt.getch()
                 if char == b'\x1b':  # Escape key
@@ -589,20 +583,25 @@ def zoek_hoorspellen(db_file):
                         logging.warning("UnicodeDecodeError encountered - ignoring undecodable characters")
                         continue
 
+            # Check if search_term contains ':'
+            if ':' in search_term:
+                parts = search_term.split(':', 1)
+                if parts[0] in valid_fields:
+                    specific_field = parts[0]
+                    search_term = parts[1]
+
             offset = 0
             limit = 200
 
             try:
-                logging.debug(f"Executing search with search_term={search_term}")
-                results = execute_search(db_file, search_term, offset=offset, limit=limit)
+                logging.debug(f"Executing search with search_term={search_term}, specific_field={specific_field}")
+                results = execute_search(db_file, search_term, offset, limit, specific_field)
             except sqlite3.OperationalError as e:
                 logging.error(f"Zoekopdracht mislukt: {e}")
                 clear_screen()
                 print("\nEr is iets fout gegaan. Druk op ENTER om verder te gaan.", end='')
                 input()
                 continue
-
-            # Rest of the function remains unchanged...
 
             if not results:
                 logging.debug("No results found for the search criteria")
@@ -619,28 +618,30 @@ def zoek_hoorspellen(db_file):
             logging.debug("Starting the record viewing loop")
             while True:
                 clear_screen()
-                for index, attribute in enumerate(valid_fields, start=0):
-                    value = results[current_record][index - 0]  # Adjusted index
-                    if index == current_attribute:
-                        print(f"-> {attribute}: {value}")
+                for i, attribute_name in enumerate(valid_fields):  # Use valid_fields instead of attribute_names
+                    if i == current_attribute:
+                        print(f"-> {attribute_name}: {results[current_record][i]}\033[K")
                     else:
-                        print(f"   {attribute}: {value}")
-                print("\033[{}A\033[{}C".format(len(valid_fields) - current_attribute, len(f"-> {valid_fields[current_attribute]}: {results[current_record][current_attribute]}")), end='', flush=True)
+                        print(f"{attribute_name}: {results[current_record][i]}\033[K")
+
+                print(f"\033[{len(valid_fields) - current_attribute}A", end='', flush=True)  # Use valid_fields
+                print(f"\033[{len(f'-> {valid_fields[current_attribute]}: {results[current_record][current_attribute]}')}C", end='', flush=True)  # Use valid_fields
+
                 key = msvcrt.getch()
                 if key in [b'\x00', b'\xe0']:  # Arrow keys are preceded by these bytes
                     key = msvcrt.getch()
-                if key == b'H':  # Up arrow key
-                    current_attribute = (current_attribute - 1) % len(valid_fields)  # Wrap around using modulo
+                if key == b'\x1b':  # Escape key
+                    break
+                elif key == b'H':  # Up arrow key
+                    current_attribute = (current_attribute - 1) % len(valid_fields)  # Use valid_fields
                 elif key == b'P':  # Down arrow key
-                    current_attribute = (current_attribute + 1) % len(valid_fields)  # Wrap around using modulo
+                    current_attribute = (current_attribute + 1) % len(valid_fields)  # Use valid_fields
                 elif key == b'M':  # Right arrow key
                     if current_record < len(results) - 1:
                         current_record += 1
-                        current_attribute = 0  # Reset attribute index when changing records
                 elif key == b'K':  # Left arrow key
                     if current_record > 0:
                         current_record -= 1
-                        current_attribute = 0  # Reset attribute index when changing records
                 elif key == b'e':  # 'e' key for edit
                     logging.debug("Edit key pressed - editing current field")
                     if valid_fields[current_attribute] == "id":
@@ -655,10 +656,11 @@ def zoek_hoorspellen(db_file):
                 elif key == b'\x1b':  # Escape key
                     logging.debug("Escape key pressed - returning to search prompt")
                     break  # Break out of the inner loop to go back to the search prompt
-            
+
     except Exception as e:
         logging.error(f"An error occurred: {e}")
         print(f"Er is een fout opgetreden: {e}")
+
     # print("\033[1A", end='', flush=True)  # Voorbeeld ANSI Escape code om de cursor omhoog te verplaatsen
 
 valid_fields = [
@@ -682,32 +684,13 @@ def toon_totaal_hoorspellen(db_file='hoorspel.db'):
     input(f"Totaal aantal hoorspellen: {total}. Druk op Enter om terug te gaan naar het hoofdmenu...")
     clear_screen() #     
 
-class COORD(ctypes.Structure):
-    _fields_ = [("X", ctypes.c_short), ("Y", ctypes.c_short)]
-
-class CONSOLE_CURSOR_INFO(ctypes.Structure):
-    _fields_ = [("dwSize", ctypes.c_ulong), ("bVisible", ctypes.c_bool)]
-
-def move_cursor(y, x):
-    """Move cursor to position (y, x)."""
-    h = ctypes.windll.kernel32.GetStdHandle(-11)
-    ctypes.windll.kernel32.SetConsoleCursorPosition(h, COORD(x, y))
-
-def set_cursor_visibility(visible):
-    """Set the visibility of the cursor."""
-    h = ctypes.windll.kernel32.GetStdHandle(-11)
-    cursor_info = CONSOLE_CURSOR_INFO()
-    ctypes.windll.kernel32.GetConsoleCursorInfo(h, ctypes.byref(cursor_info))
-    cursor_info.bVisible = visible
-    ctypes.windll.kernel32.SetConsoleCursorInfo(h, ctypes.byref(cursor_info))
-
 # De gesciedenis functie in het hoofdmenu. Laat de laatste 10 toegevoegde records zien.
 def geschiedenis(db_file):
     clear_screen()
     conn = sqlite3.connect(db_file)
     cursor = conn.cursor()
 
-    cursor.execute("SELECT * FROM hoorspelen ORDER BY id DESC LIMIT 10")
+    cursor.execute("SELECT * FROM hoorspelen ORDER BY id ASC LIMIT 10")
     results = cursor.fetchall()
     results = [list(item) for item in reversed(results)]  # Convert each tuple to a list
 
@@ -720,24 +703,21 @@ def geschiedenis(db_file):
     current_attribute = 0
     attribute_names = [description[0] for description in cursor.description]
 
-    # Calculate the maximum length of the attribute names
-    max_length = max(len(name) for name in attribute_names)
-
     while True:
-        clear_screen()
-        print("Geschiedenis (Laatste 10 toevoegingen):")
-        for index, attribute in enumerate(attribute_names):
-            # Print the pointer, attribute name, and value separately
-            pointer = '->' if index == current_attribute else '  '
-            print(f"{pointer} {attribute:<{max_length}}", end=': ')
-            print(results[current_record][index], end='')  # Do not end with a newline
+        print('\033c', end='')
+        cursor_position = 0
+        for i, attribute_name in enumerate(attribute_names):
+            if i == current_attribute:
+                print(f"-> {attribute_name}: {results[current_record][i]}\033[K")
+                cursor_position = len('-> ' + attribute_name + ': ' + str(results[current_record][i]))
+            else:
+                print(f"{attribute_name}: {results[current_record][i]}\033[K")
 
-        # Get the key press
+        print(f"\033[{len(attribute_names) - current_attribute}A", end='', flush=True)
+        print(f"\033[{cursor_position}C", end='', flush=True)
         key = msvcrt.getch()
         if key in [b'\x00', b'\xe0']:
             key = msvcrt.getch()
-
-        # Handle the key press
         if key == b'\x1b':
             break
         elif key == b'H':
@@ -747,39 +727,29 @@ def geschiedenis(db_file):
         elif key == b'M':
             if current_record < len(results) - 1:
                 current_record += 1
-                current_attribute = 0  # Reset attribute index when changing records
+                current_attribute = 0
         elif key == b'K':
             if current_record > 0:
                 current_record -= 1
-                current_attribute = 0  # Reset attribute index when changing records
+                current_attribute = 0
+        
         elif key == b'e':  # Edit mode
+            clear_screen()
             if attribute_names[current_attribute] == 'id':  # Skip if the attribute is 'id'
                 continue
-            print('\033c', end='')
-            print(f"{attribute_names[current_attribute]}: ", end='')
-            new_value = input()
+            new_value = get_input(f"{attribute_names[current_attribute]}: ")
+            if attribute_names[current_attribute] == 'datum':
+                if not validate_date(new_value):
+                    # Clear current line
+                    print('\033[2K', end='')  
+                    input("Verkeerd formaat datum YYYY/MM/DD. Druk op ENTER...")
+                    continue
             cursor.execute(f"UPDATE hoorspelen SET {attribute_names[current_attribute]} = ? WHERE id = ?", (new_value, results[current_record][0]))
             conn.commit()
             results[current_record][current_attribute] = new_value
-
-            # Move the cursor to the end of the current line
-            x = max_length + 6 + len(str(results[current_record][index]))
-            y = index + 2
-            move_cursor(y, x)
-
-            # Move the cursor to the next line
-            move_cursor(y + 1, 0)
-        print()
-
-    set_cursor_visibility(True)
-
-    # Make the cursor invisible before moving it
-    set_cursor_visibility(False)
-    move_cursor(y, x)
-
-    conn.close()
-    clear_screen()
-
+            logging.info(f"Updated {attribute_names[current_attribute]} to {new_value} for id {results[current_record][0]}")
+            conn.close()
+        clear_screen()
 
 def export_function(db_file):
     timestamp = datetime.datetime.now().strftime("%d-%m-%Y_%H-%M")  # Replacing ':' with '_'
