@@ -1,6 +1,6 @@
 import sys
 import msvcrt
-import sqlite3
+import psycopg2
 import csv
 import datetime
 import certifi
@@ -25,17 +25,23 @@ import time
 
 os.environ['SSL_CERT_FILE'] = certifi.where()
 
-db_file = 'hoorspel.db'
+# PostgreSQL connection details
+conn = psycopg2.connect(
+    dbname='hoorspellen',
+    user='hoorspellen',
+    password='1337Hoorspellen!@',
+    host='172.20.10.5',
+    port='5432'
+)
 
 logging.basicConfig(level=logging.DEBUG, filename='app.log', filemode='w',
                     format='%(name)s - %(levelname)s - %(message)s')
 
-
 def geavanceerd_submenu():
     options = [
-        ("Importeren", lambda: import_function('hoorspel.db')),
-        ("Exporteren", lambda: export_function('hoorspel.db')),
-        ("DB Legen", lambda: clear_db_function('hoorspel.db')),
+        ("Importeren", lambda: import_function(conn)),
+        ("Exporteren", lambda: export_function(conn)),
+        ("DB Legen", lambda: clear_db_function(conn)),
         ("Terug naar Hoofdmenu", None)
     ]
     current_option = 0
@@ -66,11 +72,11 @@ def main_menu():
         main_menu()
     #global db_file
     options = [
-        ("Voeg Toe", lambda: voeg_toe(db_file, return_to_menu_callback)),
-        ("Bewerk Hoorspellen", lambda: bewerk_hoorspel(db_file)),
-        ("Zoek Hoorspellen", lambda: zoek_hoorspellen(db_file)),
-        ("Totaal", lambda: toon_totaal_hoorspellen(db_file)),
-        ("Geschiedenis", lambda: geschiedenis(db_file)),
+        ("Voeg Toe", lambda: voeg_toe(conn, return_to_menu_callback)),
+        ("Bewerk Hoorspellen", lambda: bewerk_hoorspel(conn)),
+        ("Zoek Hoorspellen", lambda: zoek_hoorspellen(conn)),
+        ("Totaal", lambda: toon_totaal_hoorspellen(conn)),
+        ("Geschiedenis", lambda: geschiedenis(conn)),
         ("Geavanceerd", geavanceerd_submenu),  # No argument passed to geavanceerd_submenu
         ("Afsluiten", lambda: sys.exit())
     ]
@@ -89,7 +95,7 @@ def main_menu():
         if key == b'\x1b':  # Escape key
             clear_screen()
             print("\nBackup aan het maken, moment geduld.", end='', flush=True)
-            email_message = create_message_with_attachment("sjefsdatabasebackups@gmail.com", "sjefsdatabasebackups@gmail.com", "Hoorspelen backup", "De backup van de hoorspelen", csv_path=export_function(db_file))
+            email_message = create_message_with_attachment("sjefsdatabasebackups@gmail.com", "sjefsdatabasebackups@gmail.com", "Hoorspelen backup", "De backup van de hoorspelen", csv_path=export_function(conn))
             send_message(service, "me", email_message)
             sys.exit()
         elif key == b'H':  # Up arrow key
@@ -98,48 +104,45 @@ def main_menu():
             current_option = (current_option + 1) % len(options)  # Move right in the list
         elif key == b'\r':  # Enter key
             if current_option == len(options) - 1:  # Last option is "Afsluiten"
-                email_message = create_message_with_attachment("sjefsdatabasebackups@gmail.com", "sjefsdatabasebackups@gmail.com", "Hoorspelen backup", "De backup van de hoorspelen", csv_path=export_function(db_file))
+                email_message = create_message_with_attachment("sjefsdatabasebackups@gmail.com", "sjefsdatabasebackups@gmail.com", "Hoorspelen backup", "De backup van de hoorspelen", csv_path=export_function(conn))
                 send_message(service, "me", email_message)
                 sys.exit()
             else:
                 options[current_option][1]() # Execute the selected option's function  # Execute the selected option's function
                 os.system('cls' if os.name == 'nt' else 'clear')  # Clear the screen after returning from the function
-def import_function(db_file):
+
+def import_function(conn):
     filename = input("Voer het pad naar het CSV-bestand in: ")
     try:
         with open(filename, 'r', newline='', encoding='utf-8') as csvfile:
             reader = csv.reader(csvfile)
             # Optionally, skip the header if your CSV file includes one
             next(reader, None)  # This skips the first line of the CSV which usually contains the header
-            conn = sqlite3.connect(db_file)
             cursor = conn.cursor()
             for row in reader:
                 # Exclude the first column (id) from the row if your CSV includes it
                 data_to_insert = row[1:]  # Adjust this line if the structure is different
                 cursor.execute('''
                     INSERT INTO hoorspelen (auteur, titel, regie, datum, omroep, bandnr, vertaling, duur, bewerking, genre, productie, themareeks, delen, bijzverm, taal)
-                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                    VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
                 ''', data_to_insert)
             conn.commit()
-            conn.close()
         print("Importeren gelukt.")
     except Exception as e:
         print(f"Er is een fout opgetreden: {e}")
 
     input("Druk op Enter om verder te gaan...")
 
-def export_function(db_file):
+def export_function(conn):
     timestamp = datetime.datetime.now().strftime("%d-%m-%Y_%H-%M")  # Replacing ':' with '_'
     filename = f"hoorspellendb{timestamp}.csv"
     try:
         with open(filename, 'w', newline='', encoding='utf-8') as csvfile:
-            conn = sqlite3.connect(db_file)
             cursor = conn.cursor()
             cursor.execute("SELECT * FROM hoorspelen")
             writer = csv.writer(csvfile)
-            writer.writerow([i[0] for i in cursor.description])  # Write headers
+            writer.writerow([desc[0] for desc in cursor.description])  # Write headers
             writer.writerows(cursor.fetchall())
-            conn.close()
         print(f"Exporteren gelukt. Bestand opgeslagen als: {filename}")
     except Exception as e:
         print(f"Er is een fout opgetreden: {e}")
@@ -147,15 +150,13 @@ def export_function(db_file):
 
     input("Druk op Enter om verder te gaan...")
 
-def clear_db_function(db_file):
+def clear_db_function(conn):
     confirm = input("Weet u zeker dat u alle gegevens wilt wissen? Type 'ja' om te bevestigen: ")
     if confirm.lower() == 'ja':
         try:
-            conn = sqlite3.connect(db_file)
             cursor = conn.cursor()
             cursor.execute("DELETE FROM hoorspelen")
             conn.commit()
-            conn.close()
             print("Database geleegd.")
         except Exception as e:
             print(f"Er is een fout opgetreden: {e}")
@@ -165,12 +166,11 @@ def clear_db_function(db_file):
     input("Druk op Enter om verder te gaan...")
 
 # Define the other functions (add_entry, view_entries, search_entries) here
-def initialize_db(db_file):
-    conn = sqlite3.connect(db_file)
+def initialize_db(conn):
     cursor = conn.cursor()
     cursor.execute('''
-        CREATE TABLE IF NOT EXISTS hoorspelen (
-            id INTEGER PRIMARY KEY,
+        CREATE TABLE IF NOT EXISTS hoorspellen (
+            id SERIAL PRIMARY KEY,
             auteur TEXT,
             titel TEXT,
             regie TEXT,
@@ -189,7 +189,7 @@ def initialize_db(db_file):
         )
     ''')
     conn.commit()
-    conn.close()
+    cursor.close()
 
 def validate_date(date_string):
     try:
@@ -222,13 +222,12 @@ def get_input(prompt):
 def clear_screen():
     os.system('cls' if os.name == 'nt' else 'clear')
 
-def voeg_toe(db_file, return_to_menu_callback):
-    logging.debug('voeg_toe called with db_file=%s', db_file)
+def voeg_toe(conn, return_to_menu_callback):
+    logging.debug('voeg_toe called with conn=%s', conn)
 
-    conn = sqlite3.connect(db_file)
     cursor = conn.cursor()
 
-    cursor.execute('SELECT MAX(id) FROM hoorspelen')
+    cursor.execute('SELECT MAX(id) FROM hoorspellen')
     max_id = cursor.fetchone()[0]
     new_id = max_id + 1 if max_id is not None else 1
 
@@ -269,8 +268,8 @@ def voeg_toe(db_file, return_to_menu_callback):
 
                 if is_valid_datum_format(record['datum']):
                     record_values = [new_id] + [record[field] for field in fields]
-                    placeholders = ', '.join(['?'] * (len(fields) + 1))
-                    cursor.execute(f'INSERT INTO hoorspelen (id, {", ".join(fields)}) VALUES ({placeholders})', record_values)
+                    placeholders = ', '.join(['%s'] * (len(fields) + 1))
+                    cursor.execute(f'INSERT INTO hoorspellen (id, {", ".join(fields)}) VALUES ({placeholders})', record_values)
                     conn.commit()
                     logging.debug('Record added: %s', record_values)
                     clear_screen()
@@ -298,7 +297,7 @@ def voeg_toe(db_file, return_to_menu_callback):
                 record[field] = record[field][:cursor_positions[field]] + char + record[field][cursor_positions[field]:]
                 cursor_positions[field] += 1
 
-    conn.close()
+    cursor.close()
     return_to_menu_callback()
 
 def read_input():
