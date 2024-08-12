@@ -1,2 +1,13 @@
 googleapiclient.discovery_cache - INFO - file_cache is only supported with oauth2client<4.0.0
-googleapiclient.discovery - DEBUG - URL being requested: POST https://gmail.googleapis.com/gmail/v1/users/me/messages/send?alt=json
+root - DEBUG - Prompting for search input
+root - DEBUG - Executing search with search_term=kevin, specific_field=None
+root - DEBUG - Starting execute_search function
+root - INFO - Executing search with search term: kevin, offset: 0, limit: 200, specific_field: None
+root - ERROR - An error occurred in execute_search: Expected bytes or unicode string, got psycopg2.extensions.connection instead
+root - ERROR - An error occurred: Expected bytes or unicode string, got psycopg2.extensions.connection instead
+root - DEBUG - Prompting for search input
+root - DEBUG - Executing search with search_term=kevin, specific_field=auteur
+root - DEBUG - Starting execute_search function
+root - INFO - Executing search with search term: kevin, offset: 0, limit: 200, specific_field: auteur
+root - ERROR - An error occurred in execute_search: Expected bytes or unicode string, got psycopg2.extensions.connection instead
+root - ERROR - An error occurred: Expected bytes or unicode string, got psycopg2.extensions.connection instead

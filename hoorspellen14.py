@@ -37,6 +37,30 @@ conn = psycopg2.connect(
 logging.basicConfig(level=logging.DEBUG, filename='app.log', filemode='w',
                     format='%(name)s - %(levelname)s - %(message)s')
 
+def initialize_db(conn):
+    cursor = conn.cursor()
+    cursor.execute('''
+        CREATE TABLE IF NOT EXISTS hoorspelen (
+            id SERIAL PRIMARY KEY,
+            auteur TEXT,
+            titel TEXT,
+            regie TEXT,
+            datum TEXT,
+            omroep TEXT,
+            bandnr TEXT,
+            vertaling TEXT,
+            duur TEXT,
+            bewerking TEXT,
+            genre TEXT,
+            productie TEXT,
+            themareeks TEXT,
+            delen TEXT,
+            bijzverm TEXT,
+            taal TEXT
+        )
+    ''')
+    conn.commit()
+
 def geavanceerd_submenu():
     options = [
         ("Importeren", lambda: import_function(conn)),
@@ -120,8 +144,10 @@ def import_function(conn):
             next(reader, None)  # This skips the first line of the CSV which usually contains the header
             cursor = conn.cursor()
             for row in reader:
+                print(f"Importing row: {row}")  # Debugging statement
                 # Exclude the first column (id) from the row if your CSV includes it
                 data_to_insert = row[1:]  # Adjust this line if the structure is different
+                print(f"Data to insert: {data_to_insert}")  # Debugging statement
                 cursor.execute('''
                     INSERT INTO hoorspelen (auteur, titel, regie, datum, omroep, bandnr, vertaling, duur, bewerking, genre, productie, themareeks, delen, bijzverm, taal)
                     VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
@@ -164,32 +190,6 @@ def clear_db_function(conn):
         print("Wissen geannuleerd.")
 
     input("Druk op Enter om verder te gaan...")
-
-# Define the other functions (add_entry, view_entries, search_entries) here
-def initialize_db(conn):
-    cursor = conn.cursor()
-    cursor.execute('''
-        CREATE TABLE IF NOT EXISTS hoorspellen (
-            id SERIAL PRIMARY KEY,
-            auteur TEXT,
-            titel TEXT,
-            regie TEXT,
-            datum TEXT,
-            omroep TEXT,
-            bandnr TEXT,
-            vertaling TEXT,
-            duur REAL,
-            bewerking TEXT,
-            genre TEXT,
-            productie TEXT,
-            themareeks TEXT,
-            delen INTEGER,
-            bijzverm TEXT,
-            taal TEXT
-        )
-    ''')
-    conn.commit()
-    cursor.close()
 
 def validate_date(date_string):
     try:
@@ -333,9 +333,8 @@ def handle_input(prompt):
     user_input = read_input()
     return user_input
 
-def bewerk_hoorspel(db_file):
+def bewerk_hoorspel(conn):
     os.system('cls' if os.name == 'nt' else 'clear')  # Clear the screen
-    conn = sqlite3.connect(db_file)
     cursor = conn.cursor()
 
     entry_id = handle_input("Voer de ID in van de inzending die je wilt bewerken: ")
@@ -350,7 +349,7 @@ def bewerk_hoorspel(db_file):
         conn.close()
         return
 
-    cursor.execute("SELECT * FROM hoorspelen WHERE id = ?", (entry_id,))
+    cursor.execute("SELECT * FROM hoorspelen WHERE id = %s", (entry_id,))
     entry = cursor.fetchone()
 
     if entry:
@@ -389,22 +388,22 @@ def bewerk_hoorspel(db_file):
 
         cursor.execute('''
             UPDATE hoorspelen 
-            SET auteur = COALESCE(NULLIF(?, ''), auteur),
-                titel = COALESCE(NULLIF(?, ''), titel),
-                regie = COALESCE(NULLIF(?, ''), regie),
-                datum = COALESCE(NULLIF(?, ''), datum),
-                omroep = COALESCE(NULLIF(?, ''), omroep),
-                bandnr = COALESCE(NULLIF(?, ''), bandnr),
-                vertaling = COALESCE(NULLIF(?, ''), vertaling),
-                duur = COALESCE(NULLIF(?, ''), duur),
-                bewerking = COALESCE(NULLIF(?, ''), bewerking),
-                genre = COALESCE(NULLIF(?, ''), genre),
-                productie = COALESCE(NULLIF(?, ''), productie),
-                themareeks = COALESCE(NULLIF(?, ''), themareeks),
-                delen = COALESCE(NULLIF(?, ''), delen),
-                bijzverm = COALESCE(NULLIF(?, ''), bijzverm),
-                taal = COALESCE(NULLIF(?, ''), taal)
-            WHERE id = ?
+            SET auteur = COALESCE(NULLIF(%s, ''), auteur),
+                titel = COALESCE(NULLIF(%s, ''), titel),
+                regie = COALESCE(NULLIF(%s, ''), regie),
+                datum = COALESCE(NULLIF(%s, ''), datum),
+                omroep = COALESCE(NULLIF(%s, ''), omroep),
+                bandnr = COALESCE(NULLIF(%s, ''), bandnr),
+                vertaling = COALESCE(NULLIF(%s, ''), vertaling),
+                duur = COALESCE(NULLIF(%s, ''), duur),
+                bewerking = COALESCE(NULLIF(%s, ''), bewerking),
+                genre = COALESCE(NULLIF(%s, ''), genre),
+                productie = COALESCE(NULLIF(%s, ''), productie),
+                themareeks = COALESCE(NULLIF(%s, ''), themareeks),
+                delen = COALESCE(NULLIF(%s, ''), delen),
+                bijzverm = COALESCE(NULLIF(%s, ''), bijzverm),
+                taal = COALESCE(NULLIF(%s, ''), taal)
+            WHERE id = %s
         ''', (new_auteur, new_titel, new_regie, new_datum, new_omroep, new_bandnr, new_vertaling, new_duur, new_bewerking, new_genre, new_productie, new_themareeks, new_delen, new_bijzverm, new_taal, entry_id))
         conn.commit()
 
@@ -414,6 +413,7 @@ def bewerk_hoorspel(db_file):
 
     input("Druk op Enter om verder te gaan...")
     os.system('cls' if os.name == 'nt' else 'clear')  # Clear the screen again before returning to the menu
+
 
 valid_fields = [
     "id", "auteur", "titel", "regie", "datum", "omroep", "bandnr",
@@ -425,17 +425,18 @@ valid_fields = [
 def clear_screen():
     os.system('cls' if os.name == 'nt' else 'clear')
 
+import psycopg2
+
 def save_changes_to_database(db_file, record_id, field_name, new_value):
     print("save changes to database")
     try:
-        with sqlite3.connect(db_file) as conn:
-            conn.set_trace_callback(print)  # Optionally set a trace callback to debug SQL statements
+        with psycopg2.connect(db_file) as conn:
             cursor = conn.cursor()
-            query = f"UPDATE hoorspelen SET {field_name} = ? WHERE id = ?"
+            query = f"UPDATE hoorspelen SET {field_name} = %s WHERE id = %s"
             cursor.execute(query, (new_value, record_id))
-            # De connectie commit is hier niet nodig omdat `with` automatisch commit uitvoert als er geen uitzonderingen zijn.
-    except sqlite3.Error as e:
-        print(f"A SQLite error occurred: {e}")
+            conn.commit()  # Explicitly commit the transaction
+    except psycopg2.Error as e:
+        print(f"A PostgreSQL error occurred: {e}")
 
 def edit_current_field(db_file, current_record, current_attribute, attribute_names, results):
     clear_screen()
@@ -501,15 +502,15 @@ def execute_search(db_file, search_term, offset, limit, specific_field=None):
     logging.debug("Starting execute_search function")
     logging.info(f"Executing search with search term: {search_term}, offset: {offset}, limit: {limit}, specific_field: {specific_field}")
     try:
-        conn = sqlite3.connect(db_file)
+        conn = psycopg2.connect(db_file)
         cursor = conn.cursor()
         logging.info(f"Connected to database: {db_file}")
 
         if specific_field and specific_field in valid_fields:
-            query = f"SELECT * FROM hoorspelen WHERE {specific_field} LIKE ? LIMIT ? OFFSET ?"
+            query = f"SELECT * FROM hoorspelen WHERE {specific_field} LIKE %s LIMIT %s OFFSET %s"
             params = [f"%{search_term}%", limit, offset]
         else:
-            query = "SELECT * FROM hoorspelen WHERE " + " OR ".join([f"{field} LIKE ?" for field in valid_fields]) + " LIMIT ? OFFSET ?"
+            query = "SELECT * FROM hoorspelen WHERE " + " OR ".join([f"{field} LIKE %s" for field in valid_fields]) + " LIMIT %s OFFSET %s"
             params = [f"%{search_term}%"] * len(valid_fields) + [limit, offset]
 
         cursor.execute(query, params)
@@ -523,9 +524,6 @@ def execute_search(db_file, search_term, offset, limit, specific_field=None):
     except Exception as e:
         logging.error(f"An error occurred in execute_search: {e}")
         raise
-
-# Other helper functions like clear_screen, save_changes_to_database,
-# edit_current_field, correct_field_name, execute_search remain unchanged...
 
 def parse_input(input_str):
     # This is just an example function. You'll need to implement the actual parsing logic.
@@ -550,6 +548,8 @@ valid_fields = ["auteur", "titel", "regie", "datum", "omroep", "bandnr", "vertal
 # Placeholder for the clear_screen function.
 def clear_screen():
     os.system('cls' if os.name == 'nt' else 'clear')
+
+import psycopg2
 
 def zoek_hoorspellen(db_file):
     clear_screen()
@@ -591,7 +591,7 @@ def zoek_hoorspellen(db_file):
             try:
                 logging.debug(f"Executing search with search_term={search_term}, specific_field={specific_field}")
                 results = execute_search(db_file, search_term, offset, limit, specific_field)
-            except sqlite3.OperationalError as e:
+            except psycopg2.OperationalError as e:
                 logging.error(f"Zoekopdracht mislukt: {e}")
                 clear_screen()
                 print("\nEr is iets fout gegaan. Druk op ENTER om verder te gaan.", end='')
@@ -664,12 +664,8 @@ valid_fields = [
     "themareeks", "delen", "bijzverm", "taal"
 ]
 
-# DB file path
-db_file = 'hoorspel.db'
-clear_screen()
-# Laat het totaal aantal hoorspellen zien.
 def toon_totaal_hoorspellen(db_file='hoorspel.db'):
-    conn = sqlite3.connect(db_file)
+    conn = psycopg2.connect(db_file)
     cursor = conn.cursor()
     cursor.execute("SELECT COUNT(*) FROM hoorspelen")
     total = cursor.fetchone()[0]
@@ -677,12 +673,14 @@ def toon_totaal_hoorspellen(db_file='hoorspel.db'):
 
     clear_screen()
     input(f"Totaal aantal hoorspellen: {total}. Druk op Enter.")
-    clear_screen() #     
+    clear_screen()
 
 # De gesciedenis functie in het hoofdmenu. Laat de laatste 10 toegevoegde records zien.
+import psycopg2
+
 def geschiedenis(db_file):
     clear_screen()
-    conn = sqlite3.connect(db_file)
+    conn = psycopg2.connect(db_file)
     cursor = conn.cursor()
 
     # Change the SQL query to order by 'id' in descending order
@@ -759,7 +757,7 @@ def geschiedenis(db_file):
                     print('\033[2K', end='')  
                     input("Verkeerd formaat datum YYYY/MM/DD. Druk op ENTER...")
                     continue
-            cursor.execute(f"UPDATE hoorspelen SET {attribute_names[current_attribute]} = ? WHERE id = ?", (new_value, results[current_record][0]))
+            cursor.execute(f"UPDATE hoorspelen SET {attribute_names[current_attribute]} = %s WHERE id = %s", (new_value, results[current_record][0]))
             conn.commit()
             results[current_record][current_attribute] = new_value
             logging.info(f"Updated {attribute_names[current_attribute]} to {new_value} for id {results[current_record][0]}")
@@ -771,7 +769,7 @@ def export_function(db_file):
     filename = f"hoorspellendb_{timestamp}.csv"
     try:
         with open(filename, 'w', newline='', encoding='utf-8') as csvfile:
-            conn = sqlite3.connect(db_file)
+            conn = psycopg2.connect(db_file)
             cursor = conn.cursor()
             cursor.execute("SELECT * FROM hoorspelen")
             writer = csv.writer(csvfile)
@@ -780,7 +778,6 @@ def export_function(db_file):
             conn.close()
             clear_screen()
             print(f"\033[1AExport succesvol bestand opgeslagen als: {filename}", end='', flush=True)  # Optionally move the cursor up one line])
-            # print("\033[1A", end='', flush=True)
             return filename  # Return the file path of the exported CSV file
     except Exception as e:
         print(f"Er is een fout opgetreden: {e}")
@@ -878,8 +875,9 @@ def export_and_email_backup(service, db_file, email_address):
         print("Export mislukt. Email niet verzonden.")
 
 if __name__ == "__main__":
-    initialize_db("hoorspel.db")
-    db_file = 'hoorspel.db'
+    conn = psycopg2.connect("postgresql://hoorspellen:1337Hoorspellen%21%40@172.20.10.5:5432/hoorspellen")
+    initialize_db(conn)
+    db_file = "postgresql://hoorspellen:1337Hoorspellen%21%40@172.20.10.5:5432/hoorspellen"
     email_address = 'sjefsdatabasebackups@gmail.com'
     service = gmail_service()
     main_menu()
