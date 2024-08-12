@@ -1,2 +1,3 @@
 app.log
 *.csv
+.vscode/settings.json
