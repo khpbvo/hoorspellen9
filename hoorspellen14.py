@@ -1,6 +1,8 @@
 import sys
 import msvcrt
 import psycopg2
+from psycopg2 import sql
+import blessed
 import csv
 import datetime
 import certifi
@@ -679,90 +681,81 @@ def toon_totaal_hoorspellen(db_file='hoorspel.db'):
 import psycopg2
 
 def geschiedenis(db_file):
-    clear_screen()
-    conn = psycopg2.connect(db_file)
-    cursor = conn.cursor()
+    term = blessed.Terminal()
 
-    # Change the SQL query to order by 'id' in descending order
-    cursor.execute("SELECT * FROM hoorspelen ORDER BY id DESC LIMIT 10")
-    results = cursor.fetchall()
-    # If you want to display the results starting with the most recent, you can reverse the list here
-    results = [list(item) for item in reversed(results)]  # This line ensures the most recent entry is shown first
+    try:
+        conn = psycopg2.connect(db_file)
+        cursor = conn.cursor()
 
-    if not results:
-        print("Geen hoorspelen gevonden.")
-        input("\nDruk op ENTER om verder te gaan...")
-        return
+        cursor.execute("SELECT * FROM hoorspelen ORDER BY id DESC LIMIT 10")
+        results = cursor.fetchall()
+        results = list(reversed(results))
 
-    current_record = 0
-    current_attribute = 0
-    attribute_names = [description[0] for description in cursor.description]
+        if not results:
+            print(term.clear())
+            print("Geen hoorspelen gevonden.")
+            input("Druk op Enter om verder te gaan...")
+            return
 
-    # The rest of your code remains unchanged...
+        current_record = 0
+        current_attribute = 0
+        attribute_names = [desc[0] for desc in cursor.description]
 
-    while True:
-        print('\033c', end='')
-        cursor_position = 0
-        for i, attribute_name in enumerate(attribute_names):
-            if i == current_attribute:
-                print(f"-> {attribute_name}: {results[current_record][i]}\033[K")
-                cursor_position = len('-> ' + attribute_name + ': ' + str(results[current_record][i]))
-            else:
-                print(f"{attribute_name}: {results[current_record][i]}\033[K")
+        def display_record():
+            print(term.clear())
+            for i, attribute_name in enumerate(attribute_names):
+                value = str(results[current_record][i])
+                if i == current_attribute:
+                    print(term.reverse(f"{attribute_name}: {value}"))
+                else:
+                    print(f"{attribute_name}: {value}")
 
-        print(f"\033[{len(attribute_names) - current_attribute}A", end='', flush=True)
-        print(f"\033[{cursor_position}C", end='', flush=True)
-        key = msvcrt.getch()
-        if key in [b'\x00', b'\xe0']:
-            key = msvcrt.getch()
-        if key == b'\x1b':
-            break
-        elif key == b'H':
-            current_attribute = (current_attribute - 1) % len(attribute_names)
-        elif key == b'P':
-            current_attribute = (current_attribute + 1) % len(attribute_names)
+        while True:
+            display_record()
 
-        elif key == b'M':  # Right arrow key
-            if current_record < len(results) - 1:
-                current_record += 1
-                current_attribute = 0
-            else:
-                clear_screen()
-                # Display "Einde zoekresultaten" when reaching the end of the records on the right
-                print('\033[2K', end='')  # Clear the line
-                print('\rEinde zoekresultaten', end='', flush=True)
-                time.sleep(5)  # Pause for a moment to let the user read the message
-                print('\r\033[2K', end='')  # Clear the message and return cursor to start of line
+            with term.cbreak():
+                key = term.inkey()
 
-        elif key == b'K':  # Left arrow key
-            if current_record > 0:
-                current_record -= 1
-                current_attribute = 0
-            else:
-                clear_screen()
-                # Display "Einde zoekresultaten" when reaching the end of the records on the left
-                print('\033[2K', end='')  # Clear the line
-                print('\rEinde zoekresultaten', end='', flush=True)
-                time.sleep(5)  # Pause for a moment to let the user read the message
-                print('\r\033[2K', end='')  # Clear the message and return cursor to start of line
-        
-        elif key == b'e':  # Edit mode
-            clear_screen()
-            if attribute_names[current_attribute] == 'id':  # Skip if the attribute is 'id'
-                continue
-            new_value = get_input(f"{attribute_names[current_attribute]}: ")
-            if attribute_names[current_attribute] == 'datum':
-                if not validate_date(new_value):
-                    # Clear current line
-                    print('\033[2K', end='')  
-                    input("Verkeerd formaat datum YYYY/MM/DD. Druk op ENTER...")
-                    continue
-            cursor.execute(f"UPDATE hoorspelen SET {attribute_names[current_attribute]} = %s WHERE id = %s", (new_value, results[current_record][0]))
-            conn.commit()
-            results[current_record][current_attribute] = new_value
-            logging.info(f"Updated {attribute_names[current_attribute]} to {new_value} for id {results[current_record][0]}")
+            if key.name == 'q':
+                break
+            elif key.name == 'KEY_UP':
+                current_attribute = (current_attribute - 1) % len(attribute_names)
+            elif key.name == 'KEY_DOWN':
+                current_attribute = (current_attribute + 1) % len(attribute_names)
+            elif key.name == 'KEY_RIGHT':
+                if current_record < len(results) - 1:
+                    current_record += 1
+            elif key.name == 'KEY_LEFT':
+                if current_record > 0:
+                    current_record -= 1
+            elif key.name == 'e':
+                if attribute_names[current_attribute] != 'id':
+                    print(term.clear())
+                    new_value = input(f"New value for {attribute_names[current_attribute]}: ")
+
+                    if attribute_names[current_attribute] == 'datum' and not validate_date(new_value):
+                        print("Verkeerd formaat datum YYYY/MM/DD.")
+                        input("Druk op Enter om verder te gaan...")
+                        continue
+
+                    try:
+                        update_query = sql.SQL("UPDATE hoorspelen SET {} = %s WHERE id = %s").format(sql.Identifier(attribute_names[current_attribute]))
+                        cursor.execute(update_query, (new_value, results[current_record][0]))
+                        conn.commit()
+                        results[current_record] = list(results[current_record])
+                        results[current_record][current_attribute] = new_value
+                    except Exception as e:
+                        conn.rollback()
+                        print(f"Error updating record: {e}")
+                        input("Druk op Enter om verder te gaan...")
+
+    except Exception as e:
+        print(term.clear())
+        print(f"Er is een fout opgetreden: {e}")
+        input("Druk op Enter om verder te gaan...")
+    finally:
+        if 'conn' in locals():
             conn.close()
-        clear_screen()
 
 def export_function(db_file):
     timestamp = datetime.datetime.now().strftime("%d-%m-%Y_%H-%M")  # Replacing ':' with '_'
