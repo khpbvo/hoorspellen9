@@ -32,7 +32,7 @@ conn = psycopg2.connect(
     dbname='hoorspellen',
     user='hoorspellen',
     password='1337Hoorspellen!@',
-    host='172.20.10.5',
+    host='192.168.1.186',
     port='5432'
 )
 
@@ -93,49 +93,63 @@ def geavanceerd_submenu():
         elif key == b'P':  # Down arrow key
             current_option = (current_option + 1) % len(options)  # Move down in the list
 
-def main_menu():
-    def return_to_menu_callback():
-        main_menu()
-    #global db_file
+
+def main_menu(conn, term):
     options = [
-        ("Voeg Toe", lambda: voeg_toe(conn, return_to_menu_callback)),
-        ("Bewerk Hoorspellen", lambda: bewerk_hoorspel(conn)),
-        ("Zoek Hoorspellen", lambda: zoek_hoorspellen(conn)),
-        ("Totaal", lambda: toon_totaal_hoorspellen(conn)),
-        ("Geschiedenis", lambda: geschiedenis(conn)),
-        ("Geavanceerd", geavanceerd_submenu),  # No argument passed to geavanceerd_submenu
-        ("Afsluiten", lambda: sys.exit())
+        "Voeg Toe",
+        "Bewerk Hoorspellen",
+        "Zoek Hoorspellen",
+        "Totaal",
+        "Geschiedenis",
+        "Geavanceerd",
+        "Afsluiten"
     ]
     current_option = 0
+
     while True:
-        os.system('cls' if os.name == 'nt' else 'clear')
+        print(term.home + term.clear, end='')
         for index, option in enumerate(options):
-            print(f"   {option[0]}")
-        # Move cursor back to the start of the line where the selected option is and clear to end of line.
-        print(f"\033[{len(options) - current_option}A\r-> {options[current_option][0]}\033[K", end='', flush=True)
+            if index == current_option:
+                print(f"-> {option}")
+            else:
+                print(f"   {option}")
+        
+        # Move cursor to the end of the selected option
+        selected_text = f"-> {options[current_option]}"
+        print(term.move_yx(current_option, len(selected_text)), end='', flush=True)
 
-        key = msvcrt.getch()
-        if key in [b'\x00', b'\xe0']:  # Special keys (including arrows) are preceded by these bytes
-            key = msvcrt.getch()  # Fetch the actual key code
+        with term.cbreak():
+            key = term.inkey()
 
-        if key == b'\x1b':  # Escape key
-            clear_screen()
-            print("\nBackup aan het maken, moment geduld.", end='', flush=True)
-            email_message = create_message_with_attachment("sjefsdatabasebackups@gmail.com", "sjefsdatabasebackups@gmail.com", "Hoorspelen backup", "De backup van de hoorspelen", csv_path=export_function(conn))
-            send_message(service, "me", email_message)
-            sys.exit()
-        elif key == b'H':  # Up arrow key
-            current_option = (current_option - 1) % len(options)  # Move left in the list
-        elif key == b'P':  # Down arrow key
-            current_option = (current_option + 1) % len(options)  # Move right in the list
-        elif key == b'\r':  # Enter key
-            if current_option == len(options) - 1:  # Last option is "Afsluiten"
+        if key.name == 'KEY_UP':
+            current_option = (current_option - 1) % len(options)
+        elif key.name == 'KEY_DOWN':
+            current_option = (current_option + 1) % len(options)
+        elif key.name == 'KEY_ENTER':
+            if current_option == len(options) - 1:  # "Afsluiten" option
+                print(term.home + term.clear)
+                print("Backup aan het maken, moment geduld.")
                 email_message = create_message_with_attachment("sjefsdatabasebackups@gmail.com", "sjefsdatabasebackups@gmail.com", "Hoorspelen backup", "De backup van de hoorspelen", csv_path=export_function(conn))
                 send_message(service, "me", email_message)
-                sys.exit()
+                return
             else:
-                options[current_option][1]() # Execute the selected option's function  # Execute the selected option's function
-                os.system('cls' if os.name == 'nt' else 'clear')  # Clear the screen after returning from the function
+                function_map = {
+                    "Voeg Toe": lambda: voeg_toe(conn, term),
+                    "Bewerk Hoorspellen": lambda: bewerk_hoorspel(conn, term),
+                    "Zoek Hoorspellen": lambda: zoek_hoorspellen(conn, term),
+                    "Totaal": lambda: toon_totaal_hoorspellen(conn, term),
+                    "Geschiedenis": lambda: geschiedenis(conn, term),
+                    "Geavanceerd": lambda: geavanceerd_submenu(conn, term),
+                }
+                selected_function = function_map.get(options[current_option])
+                if selected_function:
+                    selected_function()
+        elif key.name == 'KEY_ESCAPE':
+            print(term.home + term.clear)
+            print("Backup aan het maken, moment geduld.")
+            email_message = create_message_with_attachment("sjefsdatabasebackups@gmail.com", "sjefsdatabasebackups@gmail.com", "Hoorspelen backup", "De backup van de hoorspelen", csv_path=export_function(conn))
+            send_message(service, "me", email_message)
+            return
 
 def import_function(conn):
     filename = input("Voer het pad naar het CSV-bestand in: ")
@@ -551,36 +565,33 @@ valid_fields = ["auteur", "titel", "regie", "datum", "omroep", "bandnr", "vertal
 def clear_screen():
     os.system('cls' if os.name == 'nt' else 'clear')
 
-import psycopg2
-
-def zoek_hoorspellen(db_file):
-    clear_screen()
+def zoek_hoorspellen(conn, term):
+    clear_screen = lambda: print(term.home + term.clear, end='', flush=True)
+    
     try:
         while True:
-            logging.debug("Prompting for search input")
             clear_screen()
-            print("Voer zoekterm in of veld:zoekwoord", end='', flush=True)
+            print("Voer zoekterm in of veld:zoekwoord (ESC om terug te gaan)", end='', flush=True)
+            
             search_term = ''
             specific_field = None
+            
             while True:
-                char = msvcrt.getch()
-                if char == b'\x1b':  # Escape key
+                with term.cbreak():
+                    key = term.inkey()
+                
+                if key.name == 'KEY_ESCAPE':
                     return
-                elif char == b'\r':  # Enter key
+                elif key.name == 'KEY_ENTER':
                     break
-                elif char == b'\x08':  # Backspace key
-                    if len(search_term) > 0:
-                        search_term = search_term[:-1]  # Remove the last character
-                        print('\b \b', end='', flush=True)  # Clear the character on the screen
+                elif key.name == 'KEY_BACKSPACE':
+                    if search_term:
+                        search_term = search_term[:-1]
+                        print('\b \b', end='', flush=True)
                 else:
-                    try:
-                        print(char.decode(), end='', flush=True)
-                        search_term += char.decode()
-                    except UnicodeDecodeError:
-                        logging.warning("UnicodeDecodeError encountered - ignoring undecodable characters")
-                        continue
+                    search_term += key
+                    print(key, end='', flush=True)
 
-            # Check if search_term contains ':'
             if ':' in search_term:
                 parts = search_term.split(':', 1)
                 if parts[0] in valid_fields:
@@ -591,102 +602,168 @@ def zoek_hoorspellen(db_file):
             limit = 200
 
             try:
-                logging.debug(f"Executing search with search_term={search_term}, specific_field={specific_field}")
-                results = execute_search(db_file, search_term, offset, limit, specific_field)
+                results = execute_search(conn, search_term, offset, limit, specific_field)
             except psycopg2.OperationalError as e:
-                logging.error(f"Zoekopdracht mislukt: {e}")
                 clear_screen()
-                print("\nEr is iets fout gegaan. Druk op ENTER om verder te gaan.", end='')
-                input()
+                print(f"Zoekopdracht mislukt: {e}")
+                print("Druk op een toets om verder te gaan...")
+                term.inkey()
                 continue
 
             if not results:
-                logging.debug("No results found for the search criteria")
                 clear_screen()
-                print("Geen resultaten gevonden. Druk op ENTER om door te gaan of ESCAPE om te stoppen.")
-                action_key = msvcrt.getch()
-                if action_key == b'\x1b':  # ESC key
+                print("Geen resultaten gevonden.")
+                print("Druk op ESC om te stoppen of een andere toets om door te gaan...")
+                key = term.inkey()
+                if key.name == 'KEY_ESCAPE':
                     continue
                 else:
                     return
 
-            current_record = 0
-            current_attribute = 0  # Start enumeration from 1
-            logging.debug("Starting the record viewing loop")
-            while True:
-                clear_screen()
-                for i, attribute_name in enumerate(valid_fields):  # Use valid_fields instead of attribute_names
-                    if i == current_attribute:
-                        print(f"-> {attribute_name}: {results[current_record][i]}\033[K")
-                    else:
-                        print(f"{attribute_name}: {results[current_record][i]}\033[K")
-
-                print(f"\033[{len(valid_fields) - current_attribute}A", end='', flush=True)  # Use valid_fields
-                print(f"\033[{len(f'-> {valid_fields[current_attribute]}: {results[current_record][current_attribute]}')}C", end='', flush=True)  # Use valid_fields
-
-                key = msvcrt.getch()
-                if key in [b'\x00', b'\xe0']:  # Arrow keys are preceded by these bytes
-                    key = msvcrt.getch()
-                if key == b'\x1b':  # Escape key
-                    break
-                elif key == b'H':  # Up arrow key
-                    current_attribute = (current_attribute - 1) % len(valid_fields)  # Use valid_fields
-                elif key == b'P':  # Down arrow key
-                    current_attribute = (current_attribute + 1) % len(valid_fields)  # Use valid_fields
-                elif key == b'M':  # Right arrow key
-                    if current_record < len(results) - 1:
-                        current_record += 1
-                elif key == b'K':  # Left arrow key
-                    if current_record > 0:
-                        current_record -= 1
-                elif key == b'e':  # 'e' key for edit
-                    logging.debug("Edit key pressed - editing current field")
-                    if valid_fields[current_attribute] == "id":
-                        print("Het 'id' veld is niet bewerkbaar.")
-                    else:
-                        try:
-                            edit_current_field(db_file, current_record, current_attribute, valid_fields, results)
-                            results = execute_search(db_file, search_term, offset=offset, limit=limit)
-                        except Exception as e:
-                            logging.error(f"Error in edit_current_field: {e}")
-                            print(f"Error in edit_current_field: {e}")
-                elif key == b'\x1b':  # Escape key
-                    logging.debug("Escape key pressed - returning to search prompt")
-                    break  # Break out of the inner loop to go back to the search prompt
+            display_search_results(conn, term, results, search_term, offset, limit)
 
     except Exception as e:
         logging.error(f"An error occurred: {e}")
         print(f"Er is een fout opgetreden: {e}")
+        print("Druk op een toets om terug te gaan...")
+        term.inkey()
 
-    # print("\033[1A", end='', flush=True)  # Voorbeeld ANSI Escape code om de cursor omhoog te verplaatsen
+def display_search_results(conn, term, results, search_term, offset, limit):
+    current_record = 0
+    current_attribute = 0
 
+    while True:
+        clear_screen()
+        for i, attribute_name in enumerate(valid_fields):
+            value = str(results[current_record][i])
+            if i == current_attribute:
+                print(f"-> {attribute_name}: {value}")
+            else:
+                print(f"   {attribute_name}: {value}")
+        
+        # Move cursor to the end of the selected attribute
+        selected_text = f"-> {valid_fields[current_attribute]}: {results[current_record][current_attribute]}"
+        print(term.move_x(len(selected_text)), end='', flush=True)
+
+        key = term.inkey()
+        
+        if key.name == 'KEY_ESCAPE':
+            break
+        elif key.name == 'KEY_UP':
+            current_attribute = (current_attribute - 1) % len(valid_fields)
+        elif key.name == 'KEY_DOWN':
+            current_attribute = (current_attribute + 1) % len(valid_fields)
+        elif key.name == 'KEY_RIGHT':
+            if current_record < len(results) - 1:
+                current_record += 1
+        elif key.name == 'KEY_LEFT':
+            if current_record > 0:
+                current_record -= 1
+        elif key == 'e':
+            if valid_fields[current_attribute] != "id":
+                edit_field(conn, term, results, current_record, current_attribute)
+                results = execute_search(conn, search_term, offset, limit)
+
+def edit_field(conn, term, results, current_record, current_attribute):
+    clear_screen()
+    field_name = valid_fields[current_attribute]
+    current_value = results[current_record][current_attribute]
+    
+    print(f"Editing {field_name}")
+    print(f"Current value: {current_value}")
+    print("Enter new value (or press Enter to keep current, ESC to cancel):")
+    
+    new_value = ''
+    while True:
+        key = term.inkey()
+        if key.name == 'KEY_ESCAPE':
+            return
+        elif key.name == 'KEY_ENTER':
+            break
+        elif key.name == 'KEY_BACKSPACE':
+            if new_value:
+                new_value = new_value[:-1]
+                print('\b \b', end='', flush=True)
+        else:
+            new_value += key
+            print(key, end='', flush=True)
+    
+    if new_value and new_value != current_value:
+        try:
+            cursor = conn.cursor()
+            update_query = sql.SQL("UPDATE hoorspelen SET {} = %s WHERE id = %s").format(sql.Identifier(field_name))
+            cursor.execute(update_query, (new_value, results[current_record][0]))
+            conn.commit()
+            print("\nRecord updated successfully.")
+        except Exception as e:
+            conn.rollback()
+            print(f"\nError updating record: {e}")
+        finally:
+            cursor.close()
+    
+    print("Press any key to continue...")
+    term.inkey()
+
+def execute_search(conn, search_term, offset, limit, specific_field=None):
+    cursor = conn.cursor()
+    
+    if specific_field and specific_field in valid_fields:
+        query = sql.SQL("SELECT * FROM hoorspelen WHERE {} ILIKE %s LIMIT %s OFFSET %s").format(sql.Identifier(specific_field))
+        cursor.execute(query, (f"%{search_term}%", limit, offset))
+    else:
+        conditions = sql.SQL(" OR ").join(
+            sql.SQL("{} ILIKE %s").format(sql.Identifier(field))
+            for field in valid_fields
+        )
+        query = sql.SQL("SELECT * FROM hoorspelen WHERE {} LIMIT %s OFFSET %s").format(conditions)
+        cursor.execute(query, [f"%{search_term}%"] * len(valid_fields) + [limit, offset])
+    
+    results = cursor.fetchall()
+    cursor.close()
+    return results
+
+# Make sure to define valid_fields at the module level
 valid_fields = [
-    "id","auteur", "titel", "regie", "datum", "omroep", "bandnr", 
-    "vertaling", "duur", "bewerking", "genre", "productie", 
+    "id", "auteur", "titel", "regie", "datum", "omroep", "bandnr",
+    "vertaling", "duur", "bewerking", "genre", "productie",
     "themareeks", "delen", "bijzverm", "taal"
 ]
 
-def toon_totaal_hoorspellen(db_file='hoorspel.db'):
-    conn = psycopg2.connect(db_file)
-    cursor = conn.cursor()
-    cursor.execute("SELECT COUNT(*) FROM hoorspelen")
-    total = cursor.fetchone()[0]
-    conn.close()
+def toon_totaal_hoorspellen(conn, term):
+    try:
+        cursor = conn.cursor()
+        cursor.execute("SELECT COUNT(*) FROM hoorspelen")
+        total = cursor.fetchone()[0]
 
-    clear_screen()
-    input(f"Totaal aantal hoorspellen: {total}. Druk op Enter.")
-    clear_screen()
+        # Clear the screen and display the information
+        print(term.home + term.clear, end='')
+        info_line = f"Totaal aantal hoorspellen: {total}. Druk op Toets."
+        print(info_line, end='')
+
+        # Move the cursor to the end of the information line
+        print(term.move_x(len(info_line)), end='', flush=True)
+
+        # Wait for a keypress
+        with term.cbreak():
+            term.inkey()
+
+    except Exception as e:
+        print(term.home + term.clear, end='')
+        error_message = f"Er is een fout opgetreden: {e}. Druk op een toets."
+        print(error_message, end='')
+        print(term.move_x(len(error_message)), end='', flush=True)
+        with term.cbreak():
+            term.inkey()
+
+    finally:
+        if cursor:
+            cursor.close()
 
 # De gesciedenis functie in het hoofdmenu. Laat de laatste 10 toegevoegde records zien.
-import psycopg2
 
-def geschiedenis(db_file):
-    term = blessed.Terminal()
-
+def geschiedenis(conn, term):
     try:
-        conn = psycopg2.connect(db_file)
         cursor = conn.cursor()
-
         cursor.execute("SELECT * FROM hoorspelen ORDER BY id DESC LIMIT 10")
         results = cursor.fetchall()
         results = list(reversed(results))
@@ -702,13 +779,36 @@ def geschiedenis(db_file):
         attribute_names = [desc[0] for desc in cursor.description]
 
         def display_record():
-            print(term.clear())
+            print(term.home + term.clear, end='')
             for i, attribute_name in enumerate(attribute_names):
                 value = str(results[current_record][i])
                 if i == current_attribute:
-                    print(term.reverse(f"{attribute_name}: {value}"))
+                    print(f"-> {attribute_name}: {value}")
                 else:
-                    print(f"{attribute_name}: {value}")
+                    print(f"   {attribute_name}: {value}")
+            
+            selected_text = f"-> {attribute_names[current_attribute]}: {results[current_record][current_attribute]}"
+            print(term.move_yx(current_attribute, len(selected_text)), end='', flush=True)
+
+        def get_input_with_escape(prompt):
+            print(prompt, end='', flush=True)
+            buffer = []
+            while True:
+                with term.cbreak():
+                    key = term.inkey()
+                if key.name == 'KEY_ESCAPE':
+                    return None
+                elif key.name == 'KEY_ENTER':
+                    return ''.join(buffer)
+                elif key.name == 'KEY_BACKSPACE':
+                    if buffer:
+                        buffer.pop()
+                        print('\b \b', end='', flush=True)
+                elif key.is_sequence:
+                    continue
+                else:
+                    buffer.append(key)
+                    print(key, end='', flush=True)
 
         while True:
             display_record()
@@ -716,7 +816,7 @@ def geschiedenis(db_file):
             with term.cbreak():
                 key = term.inkey()
 
-            if key.name == 'q':
+            if key.name == 'KEY_ESCAPE':
                 break
             elif key.name == 'KEY_UP':
                 current_attribute = (current_attribute - 1) % len(attribute_names)
@@ -728,13 +828,20 @@ def geschiedenis(db_file):
             elif key.name == 'KEY_LEFT':
                 if current_record > 0:
                     current_record -= 1
-            elif key.name == 'e':
+            elif key == 'e':
                 if attribute_names[current_attribute] != 'id':
                     print(term.clear())
-                    new_value = input(f"New value for {attribute_names[current_attribute]}: ")
+                    current_value = str(results[current_record][current_attribute])
+                    print(f"Current value: {current_value}")
+                    new_value = get_input_with_escape(f"New value for {attribute_names[current_attribute]} (press Enter to keep current, ESC to cancel): ")
+
+                    if new_value is None:  # User pressed ESC
+                        continue
+                    elif new_value == "":  # User pressed Enter without input
+                        continue
 
                     if attribute_names[current_attribute] == 'datum' and not validate_date(new_value):
-                        print("Verkeerd formaat datum YYYY/MM/DD.")
+                        print("Verkeerd formaat datum. Gebruik YYYY/MM/DD.")
                         input("Druk op Enter om verder te gaan...")
                         continue
 
@@ -744,18 +851,20 @@ def geschiedenis(db_file):
                         conn.commit()
                         results[current_record] = list(results[current_record])
                         results[current_record][current_attribute] = new_value
+                        print("Record updated successfully.")
                     except Exception as e:
                         conn.rollback()
                         print(f"Error updating record: {e}")
-                        input("Druk op Enter om verder te gaan...")
+                    
+                    input("Druk op Enter om verder te gaan...")
 
     except Exception as e:
         print(term.clear())
         print(f"Er is een fout opgetreden: {e}")
         input("Druk op Enter om verder te gaan...")
     finally:
-        if 'conn' in locals():
-            conn.close()
+        if cursor:
+            cursor.close()
 
 def export_function(db_file):
     timestamp = datetime.datetime.now().strftime("%d-%m-%Y_%H-%M")  # Replacing ':' with '_'
@@ -868,13 +977,13 @@ def export_and_email_backup(service, db_file, email_address):
         print("Export mislukt. Email niet verzonden.")
 
 if __name__ == "__main__":
-    conn = psycopg2.connect("postgresql://hoorspellen:1337Hoorspellen%21%40@172.20.10.5:5432/hoorspellen")
+    term = blessed.Terminal()
+    conn = psycopg2.connect("postgresql://hoorspellen:1337Hoorspellen%21%40@192.168.1.186:5432/hoorspellen")
     initialize_db(conn)
-    db_file = "postgresql://hoorspellen:1337Hoorspellen%21%40@172.20.10.5:5432/hoorspellen"
     email_address = 'sjefsdatabasebackups@gmail.com'
     service = gmail_service()
-    main_menu()
+    main_menu(conn, term)
     if service:
-        export_and_email_backup(service, db_file, email_address)
+        export_and_email_backup(service, conn, email_address)
     else:
         print("Failed to initialize Gmail service.")
