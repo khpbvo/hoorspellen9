@@ -1,0 +1,128 @@
+2024-08-19 02:52:11,243 - INFO - file_cache is only supported with oauth2client<4.0.0
+2024-08-19 02:52:12,337 - INFO - Starting voeg_toe function
+2024-08-19 02:52:12,337 - INFO - New record ID will be: 1
+2024-08-19 02:53:06,167 - INFO - User pressed Ctrl+S, attempting to save record
+2024-08-19 02:53:06,168 - INFO - Validating record
+2024-08-19 02:53:06,168 - WARNING - Invalid date format: 18/03/1989
+2024-08-19 02:53:06,168 - WARNING - Validation error: Verkeerde datum. Gebruik YYYY/MM/DD.
+2024-08-19 02:53:20,520 - INFO - User pressed Ctrl+S, attempting to save record
+2024-08-19 02:53:20,520 - INFO - Validating record
+2024-08-19 02:53:20,520 - WARNING - Invalid date format: 1989/18/08
+2024-08-19 02:53:20,520 - WARNING - Validation error: Verkeerde datum. Gebruik YYYY/MM/DD.
+2024-08-19 02:53:30,154 - INFO - User pressed Ctrl+S, attempting to save record
+2024-08-19 02:53:30,154 - INFO - Validating record
+2024-08-19 02:53:30,154 - INFO - Record validation passed
+2024-08-19 02:53:30,154 - INFO - Executing SQL query: INSERT INTO hoorspellen (id, auteur, titel, regie, datum, omroep, bandnr, vertaling, duur, bewerking, genre, productie, themareeks, delen, bijzverm, taal) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+2024-08-19 02:53:30,154 - INFO - Query parameters: [1, 'Kevin', 'test', 'ttest', '1989/08/18', 'brabant', '6', 'Duits', '60', 'Kevin', 'Horror', 'kevin', 'kevin', '5', 'Kevinisgek', 'Nederlands']
+2024-08-19 02:53:30,174 - INFO - Record successfully added to database
+2024-08-19 02:55:31,163 - INFO - Starting voeg_toe function
+2024-08-19 02:55:31,165 - INFO - New record ID will be: 2
+2024-08-19 02:55:33,603 - INFO - User pressed ESC, exiting voeg_toe
+2024-09-09 08:23:56,006 - DEBUG - Making request: POST https://oauth2.googleapis.com/token
+2024-09-09 08:23:56,021 - DEBUG - Starting new HTTPS connection (1): oauth2.googleapis.com:443
+2024-09-09 08:23:56,686 - DEBUG - https://oauth2.googleapis.com:443 "POST /token HTTP/1.1" 200 None
+2024-09-09 08:23:56,701 - INFO - file_cache is only supported with oauth2client<4.0.0
+2024-09-09 08:24:12,903 - INFO - file_cache is only supported with oauth2client<4.0.0
+2024-09-09 08:27:33,219 - INFO - file_cache is only supported with oauth2client<4.0.0
+2024-09-09 08:35:04,760 - INFO - file_cache is only supported with oauth2client<4.0.0
+2024-09-09 08:36:01,756 - ERROR - An error occurred: operator does not exist: integer ~~* unknown
+LINE 1: SELECT * FROM hoorspelen WHERE "id" ILIKE '%kevin%' OR "aute...
+                                            ^
+HINT:  No operator matches the given name and argument types. You might need to add explicit type casts.
+
+2024-09-09 08:36:09,306 - ERROR - An error occurred: current transaction is aborted, commands ignored until end of transaction block
+
+2024-09-09 08:36:15,766 - ERROR - An error occurred: current transaction is aborted, commands ignored until end of transaction block
+
+2024-09-09 08:38:26,222 - INFO - file_cache is only supported with oauth2client<4.0.0
+2024-09-09 08:38:29,466 - ERROR - An error occurred: operator does not exist: integer ~~* unknown
+LINE 1: SELECT * FROM hoorspelen WHERE "id" ILIKE '%kevin%' OR "aute...
+                                            ^
+HINT:  No operator matches the given name and argument types. You might need to add explicit type casts.
+
+2024-09-09 08:38:54,708 - ERROR - An error occurred: current transaction is aborted, commands ignored until end of transaction block
+
+2024-09-09 08:40:37,800 - INFO - file_cache is only supported with oauth2client<4.0.0
+2024-09-09 08:40:43,248 - ERROR - An error occurred: operator does not exist: integer ~~* unknown
+LINE 1: SELECT * FROM hoorspelen WHERE "id" ILIKE '%kevin%' OR "aute...
+                                            ^
+HINT:  No operator matches the given name and argument types. You might need to add explicit type casts.
+
+2024-09-09 08:41:08,159 - ERROR - An error occurred: current transaction is aborted, commands ignored until end of transaction block
+
+2024-09-09 08:41:09,632 - ERROR - An error occurred: current transaction is aborted, commands ignored until end of transaction block
+
+2024-09-09 08:41:41,445 - INFO - file_cache is only supported with oauth2client<4.0.0
+2024-09-09 08:42:05,448 - INFO - file_cache is only supported with oauth2client<4.0.0
+2024-09-09 08:42:08,679 - ERROR - An error occurred: operator does not exist: integer ~~* unknown
+LINE 1: SELECT * FROM hoorspelen WHERE "id" ILIKE '%kevin%' OR "aute...
+                                            ^
+HINT:  No operator matches the given name and argument types. You might need to add explicit type casts.
+
+2024-09-09 08:43:25,139 - INFO - file_cache is only supported with oauth2client<4.0.0
+2024-09-09 08:43:30,269 - ERROR - An error occurred: operator does not exist: integer ~~* unknown
+LINE 1: SELECT * FROM hoorspelen WHERE "id" ILIKE '%kevin%' OR "aute...
+                                            ^
+HINT:  No operator matches the given name and argument types. You might need to add explicit type casts.
+
+2024-09-09 08:45:39,035 - INFO - file_cache is only supported with oauth2client<4.0.0
+2024-09-09 08:45:42,433 - ERROR - An error occurred: operator does not exist: integer ~~* unknown
+LINE 1: SELECT * FROM hoorspelen WHERE "id" ILIKE '%kevin%' OR "aute...
+                                            ^
+HINT:  No operator matches the given name and argument types. You might need to add explicit type casts.
+
+2024-09-09 08:45:54,151 - ERROR - An error occurred: current transaction is aborted, commands ignored until end of transaction block
+
+2024-09-09 08:47:05,105 - INFO - file_cache is only supported with oauth2client<4.0.0
+2024-09-09 08:47:13,416 - ERROR - An error occurred: operator does not exist: integer ~~* unknown
+LINE 1: SELECT * FROM hoorspelen WHERE "id" ILIKE '%kevin%' OR "aute...
+                                            ^
+HINT:  No operator matches the given name and argument types. You might need to add explicit type casts.
+
+2024-09-09 08:48:18,547 - INFO - file_cache is only supported with oauth2client<4.0.0
+2024-09-09 08:48:21,408 - ERROR - An error occurred: operator does not exist: integer ~~* unknown
+LINE 1: SELECT * FROM hoorspelen WHERE "id" ILIKE '%kevin%' OR "aute...
+                                            ^
+HINT:  No operator matches the given name and argument types. You might need to add explicit type casts.
+
+2024-09-09 08:50:38,021 - INFO - file_cache is only supported with oauth2client<4.0.0
+2024-09-09 08:50:41,871 - ERROR - An error occurred: operator does not exist: integer ~~* unknown
+LINE 1: SELECT * FROM hoorspelen WHERE "id" ILIKE '%kevin%' OR "aute...
+                                            ^
+HINT:  No operator matches the given name and argument types. You might need to add explicit type casts.
+
+2024-09-09 08:51:07,667 - INFO - file_cache is only supported with oauth2client<4.0.0
+2024-09-09 08:53:49,303 - INFO - file_cache is only supported with oauth2client<4.0.0
+2024-09-09 08:53:53,132 - ERROR - An error occurred: operator does not exist: integer ~~* unknown
+LINE 1: SELECT * FROM hoorspelen WHERE "id" ILIKE '%Kevin%' OR "aute...
+                                            ^
+HINT:  No operator matches the given name and argument types. You might need to add explicit type casts.
+
+2024-09-09 08:55:27,321 - INFO - file_cache is only supported with oauth2client<4.0.0
+2024-09-09 08:55:30,933 - ERROR - An error occurred: operator does not exist: integer ~~* unknown
+LINE 1: SELECT * FROM hoorspelen WHERE "id" ILIKE '%kevin%' OR "aute...
+                                            ^
+HINT:  No operator matches the given name and argument types. You might need to add explicit type casts.
+
+2024-09-13 21:00:47,362 - DEBUG - Making request: POST https://oauth2.googleapis.com/token
+2024-09-13 21:00:47,377 - DEBUG - Starting new HTTPS connection (1): oauth2.googleapis.com:443
+2024-09-13 21:00:47,849 - DEBUG - https://oauth2.googleapis.com:443 "POST /token HTTP/1.1" 200 None
+2024-09-13 21:00:47,863 - INFO - file_cache is only supported with oauth2client<4.0.0
+2024-09-13 21:00:48,050 - DEBUG - URL being requested: POST https://gmail.googleapis.com/gmail/v1/users/me/messages/send?alt=json
+2024-09-21 18:51:44,681 - DEBUG - Making request: POST https://oauth2.googleapis.com/token
+2024-09-21 18:51:44,697 - DEBUG - Starting new HTTPS connection (1): oauth2.googleapis.com:443
+2024-09-21 18:51:45,197 - DEBUG - https://oauth2.googleapis.com:443 "POST /token HTTP/1.1" 200 None
+2024-09-21 18:51:45,212 - INFO - file_cache is only supported with oauth2client<4.0.0
+2024-09-21 18:51:45,400 - DEBUG - URL being requested: POST https://gmail.googleapis.com/gmail/v1/users/me/messages/send?alt=json
+2024-09-21 18:56:30,002 - INFO - file_cache is only supported with oauth2client<4.0.0
+2024-09-21 18:56:30,191 - DEBUG - URL being requested: POST https://gmail.googleapis.com/gmail/v1/users/me/messages/send?alt=json
+2024-09-21 18:58:59,179 - INFO - file_cache is only supported with oauth2client<4.0.0
+2024-09-21 18:58:59,382 - DEBUG - URL being requested: POST https://gmail.googleapis.com/gmail/v1/users/me/messages/send?alt=json
+2024-09-21 19:02:45,037 - INFO - file_cache is only supported with oauth2client<4.0.0
+2024-09-21 19:02:45,240 - DEBUG - URL being requested: POST https://gmail.googleapis.com/gmail/v1/users/me/messages/send?alt=json
+2024-09-21 19:08:30,582 - INFO - file_cache is only supported with oauth2client<4.0.0
+2024-09-21 19:08:30,785 - DEBUG - URL being requested: POST https://gmail.googleapis.com/gmail/v1/users/me/messages/send?alt=json
+2024-09-21 19:12:48,306 - INFO - file_cache is only supported with oauth2client<4.0.0
+2024-09-21 19:12:48,495 - DEBUG - URL being requested: POST https://gmail.googleapis.com/gmail/v1/users/me/messages/send?alt=json
+2024-09-21 19:13:33,162 - INFO - file_cache is only supported with oauth2client<4.0.0
+2024-09-21 19:13:33,349 - DEBUG - URL being requested: POST https://gmail.googleapis.com/gmail/v1/users/me/messages/send?alt=json

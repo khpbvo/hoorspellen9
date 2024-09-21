@@ -27,18 +27,19 @@ import time
 
 os.environ['SSL_CERT_FILE'] = certifi.where()
 
-# PostgreSQL connection details
-conn = psycopg2.connect(
-    dbname='hoorspellen',
-    user='hoorspellen',
-    password='1337Hoorspellen!@',
-    host='172.20.10.5',
-    port='5432'
-)
-
 # Make sure to set up logging at the beginning of your script
 logging.basicConfig(filename='hoorspellen_app.log', level=logging.DEBUG,
                     format='%(asctime)s - %(levelname)s - %(message)s')
+
+# Database connection details
+def get_db_connection():
+    return psycopg2.connect(
+        dbname='hoorspellen',
+        user='hoorspellen',
+        password='1337Hoorspellen!@',
+        host='172.20.20.172',
+        port='5432'
+    )
 
 def initialize_db(conn):
     cursor = conn.cursor()
@@ -64,7 +65,7 @@ def initialize_db(conn):
     ''')
     conn.commit()
 
-def geavanceerd_submenu():
+def geavanceerd_submenu(conn, term):
     options = [
         ("Importeren", lambda: import_function(conn)),
         ("Exporteren", lambda: export_function(conn)),
@@ -93,7 +94,6 @@ def geavanceerd_submenu():
             current_option = (current_option - 1) % len(options)  # Move up in the list
         elif key == b'P':  # Down arrow key
             current_option = (current_option + 1) % len(options)  # Move down in the list
-
 
 def main_menu(conn, term):
     options = [
@@ -130,7 +130,14 @@ def main_menu(conn, term):
             if current_option == len(options) - 1:  # "Afsluiten" option
                 print(term.home + term.clear)
                 print("Backup aan het maken, moment geduld.")
-                email_message = create_message_with_attachment("sjefsdatabasebackups@gmail.com", "sjefsdatabasebackups@gmail.com", "Hoorspelen backup", "De backup van de hoorspelen", csv_path=export_function(conn))
+                email_message = create_message_with_attachment(
+                    "sjefsdatabasebackups@gmail.com",
+                    "sjefsdatabasebackups@gmail.com",
+                    "Hoorspelen backup",
+                    "De backup van de hoorspelen",
+                    csv_path=export_function(conn)
+                )
+                service = gmail_service()
                 send_message(service, "me", email_message)
                 return
             else:
@@ -148,7 +155,14 @@ def main_menu(conn, term):
         elif key.name == 'KEY_ESCAPE':
             print(term.home + term.clear)
             print("Backup aan het maken, moment geduld.")
-            email_message = create_message_with_attachment("sjefsdatabasebackups@gmail.com", "sjefsdatabasebackups@gmail.com", "Hoorspelen backup", "De backup van de hoorspelen", csv_path=export_function(conn))
+            email_message = create_message_with_attachment(
+                "sjefsdatabasebackups@gmail.com",
+                "sjefsdatabasebackups@gmail.com",
+                "Hoorspelen backup",
+                "De backup van de hoorspelen",
+                csv_path=export_function(conn)
+            )
+            service = gmail_service()
             send_message(service, "me", email_message)
             return
 
@@ -162,8 +176,8 @@ def import_function(conn):
             cursor = conn.cursor()
             for row in reader:
                 print(f"Importing row: {row}")  # Debugging statement
-                # Exclude the first column (id) from the row if your CSV includes it
-                data_to_insert = row[1:]  # Adjust this line if the structure is different
+                # Adjust this line if the structure is different
+                data_to_insert = row[1:]  # Exclude the first column (id) if your CSV includes it
                 print(f"Data to insert: {data_to_insert}")  # Debugging statement
                 cursor.execute('''
                     INSERT INTO hoorspelen (auteur, titel, regie, datum, omroep, bandnr, vertaling, duur, bewerking, genre, productie, themareeks, delen, bijzverm, taal)
@@ -178,7 +192,7 @@ def import_function(conn):
 
 def export_function(conn):
     timestamp = datetime.datetime.now().strftime("%d-%m-%Y_%H-%M")  # Replacing ':' with '_'
-    filename = f"hoorspellendb{timestamp}.csv"
+    filename = f"hoorspellendb_{timestamp}.csv"
     try:
         with open(filename, 'w', newline='', encoding='utf-8') as csvfile:
             cursor = conn.cursor()
@@ -187,9 +201,11 @@ def export_function(conn):
             writer.writerow([desc[0] for desc in cursor.description])  # Write headers
             writer.writerows(cursor.fetchall())
         print(f"Exporteren gelukt. Bestand opgeslagen als: {filename}")
+        return filename  # Return the filename for use in email attachment
     except Exception as e:
         print(f"Er is een fout opgetreden: {e}")
         os.system('cls' if os.name == 'nt' else 'clear')
+        return None  # Return None to indicate failure
 
     input("Druk op Enter om verder te gaan...")
 
@@ -210,7 +226,7 @@ def clear_db_function(conn):
 
 def validate_date(date_string):
     try:
-        datetime.strptime(date_string, '%Y/%m/%d')  # Validate date format
+        datetime.datetime.strptime(date_string, '%Y/%m/%d')  # Validate date format
         return True
     except ValueError:
         return False
@@ -239,14 +255,12 @@ def get_input(prompt):
 def clear_screen():
     os.system('cls' if os.name == 'nt' else 'clear')
 
-import logging
-
 def voeg_toe(conn, term):
     logging.info("Starting voeg_toe function")
     cursor = conn.cursor()
 
     try:
-        cursor.execute('SELECT MAX(id) FROM hoorspellen')
+        cursor.execute('SELECT MAX(id) FROM hoorspelen')
         max_id = cursor.fetchone()[0]
         new_id = max_id + 1 if max_id is not None else 1
         logging.info(f"New record ID will be: {new_id}")
@@ -272,6 +286,7 @@ def voeg_toe(conn, term):
             else:
                 print(f"   {field}: {record[field]}")
         
+        # Move cursor to the end of the selected option
         print(term.move_yx(current_field, len(f"-> {fields[current_field]}: {record[fields[current_field]]}")), end='', flush=True)
 
     def validate_record():
@@ -305,7 +320,7 @@ def voeg_toe(conn, term):
                 try:
                     record_values = [new_id] + [record[field] for field in fields]
                     placeholders = ', '.join(['%s'] * (len(fields) + 1))
-                    query = f'INSERT INTO hoorspellen (id, {", ".join(fields)}) VALUES ({placeholders})'
+                    query = f'INSERT INTO hoorspelen (id, {", ".join(fields)}) VALUES ({placeholders})'
                     logging.info(f"Executing SQL query: {query}")
                     logging.info(f"Query parameters: {record_values}")
                     cursor.execute(query, record_values)
@@ -345,41 +360,6 @@ def is_valid_datum_format(datum):
         return True
     except ValueError:
         return False
-
-
-
-def read_input():
-    """
-    Reads input from the user, displaying each character as it's typed.
-    If the Escape key is pressed, returns None.
-    """
-    input_str = []
-    while True:
-        key = msvcrt.getch()
-        if key == b'\r':  # Enter key
-            print()  # Move to the next line
-            return ''.join(input_str)
-        elif key == b'\x1b':  # Escape key
-            return None
-        elif key == b'\x08':  # Backspace
-            if input_str:
-                input_str.pop()
-                sys.stdout.write('\b \b')  # Remove the character from the console
-        elif key in [b'\x00', b'\xe0']:  # Special keys (like arrow keys, function keys)
-            msvcrt.getch()  # Fetch the next byte and ignore it
-        else:
-            try:
-                char = key.decode()
-                input_str.append(char)
-                sys.stdout.write(char)  # Display the character
-            except UnicodeDecodeError:
-                continue  # Ignore undecodable characters
-        sys.stdout.flush()  # Ensure the console is updated
-
-def handle_input(prompt):
-    print(prompt, end='', flush=True)
-    user_input = read_input()
-    return user_input
 
 def bewerk_hoorspel(conn, term):
     clear_screen = lambda: print(term.home + term.clear, end='', flush=True)
@@ -466,12 +446,11 @@ def bewerk_hoorspel(conn, term):
                         return
                     except Exception as e:
                         error_message = f"Fout bij bijwerken: {e}"
-            
+                
     else:
         print("Inzending niet gevonden.")
     
     input("Druk op Enter om verder te gaan...")
-
 
 valid_fields = [
     "id", "auteur", "titel", "regie", "datum", "omroep", "bandnr",
@@ -479,113 +458,32 @@ valid_fields = [
     "themareeks", "delen", "bijzverm", "taal"
 ]
 
-# Clears the terminal screen
-def clear_screen():
-    os.system('cls' if os.name == 'nt' else 'clear')
-
-import psycopg2
-
-def save_changes_to_database(db_file, record_id, field_name, new_value):
-    print("save changes to database")
-    try:
-        with psycopg2.connect(db_file) as conn:
-            cursor = conn.cursor()
-            query = f"UPDATE hoorspelen SET {field_name} = %s WHERE id = %s"
-            cursor.execute(query, (new_value, record_id))
-            conn.commit()  # Explicitly commit the transaction
-    except psycopg2.Error as e:
-        print(f"A PostgreSQL error occurred: {e}")
-
-def edit_current_field(db_file, current_record, current_attribute, attribute_names, results):
-    clear_screen()
-    old_value = results[current_record][current_attribute]
-    print(f"{attribute_names[current_attribute]}: ", end='', flush=True)
-    # Rest of the function...
-    new_value = []
-    while True:
-        key = msvcrt.getch()
-        if key == b'\r':  # Enter key
-            new_value_str = ''.join(new_value)  # Convert list of characters to a string
-            if attribute_names[current_attribute] == 'datum':
-                try:
-                    datetime.datetime.strptime(new_value_str, '%Y/%m/%d')
-                except ValueError:
-                    print("\nVerkeerd formaat.Gebruik yyyy/mm/dd . Druk op ENTER.", end='')
-                    input()
-                    return
-            break
-        elif key == b'\x1b':  # Escape key
-            clear_screen()
-            print("\nEdit canceled.")
-            return  # Exit the function early if edit is canceled
-        elif key == b'\x08':  # Backspace
-            if new_value:
-                new_value.pop()
-                print("\b \b", end='', flush=True)  # Move back, print space, move back again
-        else:
-            try:
-                char = key.decode()
-                if char.isprintable():  # Ensure the character is printable before appending
-                    new_value.append(char)
-                    print(char, end='', flush=True)  # Display the character
-            except UnicodeDecodeError:
-                continue  # Ignore undecodable characters
-
-    # Rest of the function remains unchanged...
-
-    field_name = attribute_names[current_attribute]
-    record_id = results[current_record][0]  # Assuming the ID is always at index 0 in results
-
-    if new_value_str:
-        print(f"\nAttempting to update record ID: {record_id} with {field_name} = {new_value_str}")
-        save_changes_to_database(db_file, record_id, field_name, new_value_str)
-        print("Wijzigingen opgeslagen.")
-    else:
-        print("\nGeen wijzigingen.")
-
-    input("\nDruk op Enter...")  # Wait for user input before proceeding
-    clear_screen()
-
-    for index, attribute in enumerate(attribute_names):
-        print(f"   {attribute}: {results[current_record][index]}")
-
-# Corrects a field name based on the list of valid fields
-def correct_field_name(field):
-    if field in valid_fields:
-        return field
-    matches = difflib.get_close_matches(field, valid_fields, n=1, cutoff=0.6)
-    return matches[0] if matches else None
-
 def execute_search(conn, search_term, offset, limit, specific_field=None):
     cursor = conn.cursor()
 
     try:
-        # Als er een specifiek veld is opgegeven
+        # If a specific field is provided
         if specific_field and specific_field in valid_fields:
             if specific_field == 'id':
-                # Controleer of de zoekterm een getal is voor 'id'
+                # Ensure the search term is a digit for 'id'
                 if not search_term.isdigit():
                     raise ValueError("ID moet een numerieke waarde zijn.")
                 query = sql.SQL("SELECT * FROM hoorspelen WHERE {} = %s LIMIT %s OFFSET %s").format(sql.Identifier(specific_field))
                 cursor.execute(query, (search_term, limit, offset))
             else:
-                # Voor tekstvelden gebruik je ILIKE
+                # Use ILIKE for text fields
                 query = sql.SQL("SELECT * FROM hoorspelen WHERE {} ILIKE %s LIMIT %s OFFSET %s").format(sql.Identifier(specific_field))
                 cursor.execute(query, (f"%{search_term}%", limit, offset))
-        
-        # Als er geen specifiek veld is opgegeven, zoeken in alle velden behalve id
         else:
             conditions = []
             params = []
 
-            # Voor alle tekstvelden gebruik je ILIKE
             for field in valid_fields:
-                if field != 'id':  # Sla 'id' over voor tekstuele zoekopdrachten
+                if field != 'id':
                     conditions.append(sql.SQL("{} ILIKE %s").format(sql.Identifier(field)))
                     params.append(f"%{search_term}%")
 
-            # Bouw de query dynamisch op met OR-voorwaarden, zonder id te gebruiken
-            if search_term.isdigit():  # Voeg de 'id'-vergelijking alleen toe als de zoekterm een getal is
+            if search_term.isdigit():
                 conditions.append(sql.SQL("{} = %s").format(sql.Identifier('id')))
                 params.append(search_term)
 
@@ -597,49 +495,27 @@ def execute_search(conn, search_term, offset, limit, specific_field=None):
         return results
 
     except Exception as e:
-        conn.rollback()  # Herstel de transactie als er een fout optreedt
+        conn.rollback()
         logging.error(f"An error occurred in execute_search: {e}")
         raise
-
-def parse_input(input_str):
-    # This is just an example function. You'll need to implement the actual parsing logic.
-    try:
-        parts = input_str.split(',')
-        parsed_data = {}
-        for part in parts:
-            field, value = part.split(':')
-            parsed_data[field.strip()] = value.strip()
-        return parsed_data
-    except Exception as e:
-        logging.error(f"Failed to parse input: {e}")
-        return None
-
-# Configure logging
-logging.basicConfig(level=logging.DEBUG, filename='app.log', filemode='w',
-                    format='%(name)s - %(levelname)s - %(message)s')
-
-# Define valid_fields with the list of fields you want to display
-valid_fields = ["auteur", "titel", "regie", "datum", "omroep", "bandnr", "vertaling", "duur", "bewerking", "genre", "productie", "themareeks", "delen", "bijzverm", "taal"]
-
-# Placeholder for the clear_screen function.
-def clear_screen():
-    os.system('cls' if os.name == 'nt' else 'clear')
-
 def zoek_hoorspellen(conn, term):
-    clear_screen = lambda: print(term.home + term.clear, end='', flush=True)
-    
+    def clear_screen():
+        print(term.home + term.clear, end='', flush=True)
+
     try:
         while True:
             clear_screen()
-            print("Voer zoekterm in of veld:zoekwoord (ESC om terug te gaan)", end='', flush=True)
-            
+            print("Voer zoekterm in of veld:zoekwoord (ESC om terug te gaan) ", end='', flush=True)
             search_term = ''
             specific_field = None
-            
+
             while True:
                 with term.cbreak():
-                    key = term.inkey()
-                
+                    key = term.inkey(timeout=1)
+
+                if not key:
+                    continue
+
                 if key.name == 'KEY_ESCAPE':
                     return
                 elif key.name == 'KEY_ENTER':
@@ -647,7 +523,10 @@ def zoek_hoorspellen(conn, term):
                 elif key.name == 'KEY_BACKSPACE':
                     if search_term:
                         search_term = search_term[:-1]
+                        # Move the cursor back, overwrite the character with space, move back again
                         print('\b \b', end='', flush=True)
+                elif key.is_sequence:
+                    continue
                 else:
                     search_term += key
                     print(key, end='', flush=True)
@@ -673,12 +552,9 @@ def zoek_hoorspellen(conn, term):
             if not results:
                 clear_screen()
                 print("Geen resultaten gevonden.")
-                print("Druk op ESC om te stoppen of een andere toets om door te gaan...")
-                key = term.inkey()
-                if key.name == 'KEY_ESCAPE':
-                    continue
-                else:
-                    return
+                print("Druk op een toets om verder te gaan...")
+                term.inkey()
+                continue
 
             display_search_results(conn, term, results, search_term, offset, limit)
 
@@ -693,20 +569,48 @@ def display_search_results(conn, term, results, search_term, offset, limit):
     current_attribute = 0
 
     while True:
-        clear_screen()
+        # Clear the screen and print the header
+        print(term.home + term.clear, end='', flush=True)
+        print(f"Resultaat {current_record + 1} van {len(results)}")
+
+        # Initialize variables to store cursor position
+        selected_line_number = None
+        selected_line_length = None
+
+        # Print each attribute
         for i, attribute_name in enumerate(valid_fields):
             value = str(results[current_record][i])
-            if i == current_attribute:
-                print(f"-> {attribute_name}: {value}")
-            else:
-                print(f"   {attribute_name}: {value}")
-        
-        # Move cursor to the end of the selected attribute
-        selected_text = f"-> {valid_fields[current_attribute]}: {results[current_record][current_attribute]}"
-        print(term.move_x(len(selected_text)), end='', flush=True)
 
-        key = term.inkey()
-        
+            if i == current_attribute:
+                # Selected attribute
+                line_content = f"-> {attribute_name}: {value}"
+                print(term.bold(line_content))
+                # Record the line number and length
+                selected_line_number = i + 1  # +1 because of the header line
+                selected_line_length = len(line_content)
+            else:
+                # Other attributes
+                line_content = f"   {attribute_name}: {value}"
+                print(line_content)
+
+        # After printing all lines, move the cursor to the end of the selected line
+        if selected_line_number is not None and selected_line_length is not None:
+            # Calculate cursor position
+            # Rows and columns start from 0 in term.move()
+            cursor_row = selected_line_number
+            cursor_col = selected_line_length
+
+            # Move the cursor to the position
+            print(term.move(cursor_row, cursor_col), end='', flush=True)
+
+        # Wait for user input
+        with term.cbreak():
+            key = term.inkey()
+
+        if not key:
+            continue
+
+        # Handle key presses
         if key.name == 'KEY_ESCAPE':
             break
         elif key.name == 'KEY_UP':
@@ -716,26 +620,44 @@ def display_search_results(conn, term, results, search_term, offset, limit):
         elif key.name == 'KEY_RIGHT':
             if current_record < len(results) - 1:
                 current_record += 1
+            else:
+                current_record = 0  # Loop to the first result
+            # current_attribute remains the same
         elif key.name == 'KEY_LEFT':
             if current_record > 0:
                 current_record -= 1
-        elif key == 'e':
+            else:
+                current_record = len(results) - 1  # Loop to the last result
+            # current_attribute remains the same
+        elif key.lower() == 'e':
             if valid_fields[current_attribute] != "id":
                 edit_field(conn, term, results, current_record, current_attribute)
+                # Refresh results after editing
                 results = execute_search(conn, search_term, offset, limit)
+        elif key.name == 'KEY_ENTER':
+            # Optional: Handle Enter key if needed
+            pass
 
 def edit_field(conn, term, results, current_record, current_attribute):
+    def clear_screen():
+        print(term.home + term.clear, end='', flush=True)
+
     clear_screen()
     field_name = valid_fields[current_attribute]
     current_value = results[current_record][current_attribute]
-    
-    print(f"Editing {field_name}")
-    print(f"Current value: {current_value}")
-    print("Enter new value (or press Enter to keep current, ESC to cancel):")
-    
+
+    print(f"Bewerk {field_name}")
+    print(f"Huidige waarde: {current_value}")
+    print("Voer nieuwe waarde in (Enter om te bewaren, ESC om te annuleren):")
+
     new_value = ''
     while True:
-        key = term.inkey()
+        with term.cbreak():
+            key = term.inkey()
+
+        if not key:
+            continue
+
         if key.name == 'KEY_ESCAPE':
             return
         elif key.name == 'KEY_ENTER':
@@ -744,50 +666,33 @@ def edit_field(conn, term, results, current_record, current_attribute):
             if new_value:
                 new_value = new_value[:-1]
                 print('\b \b', end='', flush=True)
+        elif key.is_sequence:
+            continue
         else:
             new_value += key
             print(key, end='', flush=True)
-    
-    if new_value and new_value != current_value:
+
+    if new_value == '':
+        new_value = current_value
+
+    if new_value != current_value:
         try:
             cursor = conn.cursor()
             update_query = sql.SQL("UPDATE hoorspelen SET {} = %s WHERE id = %s").format(sql.Identifier(field_name))
             cursor.execute(update_query, (new_value, results[current_record][0]))
             conn.commit()
-            print("\nRecord updated successfully.")
+            print("\nRecord succesvol bijgewerkt.")
+            # Update the value in the results
+            results[current_record] = list(results[current_record])
+            results[current_record][current_attribute] = new_value
         except Exception as e:
             conn.rollback()
-            print(f"\nError updating record: {e}")
+            print(f"\nFout bij het bijwerken van het record: {e}")
         finally:
             cursor.close()
-    
-    print("Press any key to continue...")
+
+    print("Druk op een toets om verder te gaan...")
     term.inkey()
-
-def execute_search(conn, search_term, offset, limit, specific_field=None):
-    cursor = conn.cursor()
-    
-    if specific_field and specific_field in valid_fields:
-        query = sql.SQL("SELECT * FROM hoorspelen WHERE {} ILIKE %s LIMIT %s OFFSET %s").format(sql.Identifier(specific_field))
-        cursor.execute(query, (f"%{search_term}%", limit, offset))
-    else:
-        conditions = sql.SQL(" OR ").join(
-            sql.SQL("{} ILIKE %s").format(sql.Identifier(field))
-            for field in valid_fields
-        )
-        query = sql.SQL("SELECT * FROM hoorspelen WHERE {} LIMIT %s OFFSET %s").format(conditions)
-        cursor.execute(query, [f"%{search_term}%"] * len(valid_fields) + [limit, offset])
-    
-    results = cursor.fetchall()
-    cursor.close()
-    return results
-
-# Make sure to define valid_fields at the module level
-valid_fields = [
-    "id", "auteur", "titel", "regie", "datum", "omroep", "bandnr",
-    "vertaling", "duur", "bewerking", "genre", "productie",
-    "themareeks", "delen", "bijzverm", "taal"
-]
 
 def toon_totaal_hoorspellen(conn, term):
     try:
@@ -818,9 +723,6 @@ def toon_totaal_hoorspellen(conn, term):
     finally:
         if cursor:
             cursor.close()
-
-
-# De gesciedenis functie in het hoofdmenu. Laat de laatste 10 toegevoegde records zien.
 
 def geschiedenis(conn, term):
     try:
@@ -927,30 +829,12 @@ def geschiedenis(conn, term):
         if cursor:
             cursor.close()
 
-def export_function(db_file):
-    timestamp = datetime.datetime.now().strftime("%d-%m-%Y_%H-%M")  # Replacing ':' with '_'
-    filename = f"hoorspellendb_{timestamp}.csv"
-    try:
-        with open(filename, 'w', newline='', encoding='utf-8') as csvfile:
-            conn = psycopg2.connect(db_file)
-            cursor = conn.cursor()
-            cursor.execute("SELECT * FROM hoorspelen")
-            writer = csv.writer(csvfile)
-            writer.writerow([i[0] for i in cursor.description])  # Write headers
-            writer.writerows(cursor.fetchall())
-            conn.close()
-            clear_screen()
-            print(f"\033[1AExport succesvol bestand opgeslagen als: {filename}", end='', flush=True)  # Optionally move the cursor up one line])
-            return filename  # Return the file path of the exported CSV file
-    except Exception as e:
-        print(f"Er is een fout opgetreden: {e}")
-        return None  # Return None to indicate export failure
-
+# Gmail-related functions
 SCOPES = ['https://www.googleapis.com/auth/gmail.send']
 
 def gmail_service():
     creds = None
-    service = None  # Initialize `service` to `None`
+    service = None
 
     # Ensure that the token.pickle and credentials file paths are correct
     token_path = 'token.pickle'
@@ -983,11 +867,6 @@ def gmail_service():
         print("Geen valide login.")
 
     return service
-# Path to your credentials JSON file
-CREDENTIALS_FILE = 'client_secret_909008488627-c1gda8u30p8ssck0rsrcrs46p88mimb2.apps.googleusercontent.com.json'
-
-# If modifying these SCOPES, delete the file token.json.
-SCOPES = ['https://www.googleapis.com/auth/gmail.send']
 
 def create_message_with_attachment(sender, to, subject, message_text, csv_path):
     """
@@ -1025,8 +904,8 @@ def send_message(service, user_id, message):
     except HttpError as error:
         print(f'An error occurred: {error}')
 
-def export_and_email_backup(service, db_file, email_address):
-    csv_path = export_function(db_file)
+def export_and_email_backup(service, conn, email_address):
+    csv_path = export_function(conn)
     if csv_path:
         sender = "me"
         to = email_address  # Ensure this is the recipient's email address
@@ -1039,12 +918,7 @@ def export_and_email_backup(service, db_file, email_address):
 
 if __name__ == "__main__":
     term = blessed.Terminal()
-    conn = psycopg2.connect("postgresql://hoorspellen:1337Hoorspellen%21%40@172.20.10.5:5432/hoorspellen")
+    conn = get_db_connection()
     initialize_db(conn)
-    email_address = 'sjefsdatabasebackups@gmail.com'
-    service = gmail_service()
     main_menu(conn, term)
-    if service:
-        export_and_email_backup(service, conn, email_address)
-    else:
-        print("Failed to initialize Gmail service.")
+    conn.close()
