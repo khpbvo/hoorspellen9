@@ -2,3 +2,4 @@ app.log
 *.csv
 .vscode/settings.json
 client_secret_909008488627-c1gda8u30p8ssck0rsrcrs46p88mimb2.apps.googleusercontent.com (2).json
+token.pickle
