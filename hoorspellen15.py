@@ -712,19 +712,20 @@ def geschiedenis(conn, term):
 
         def display_record():
             print(term.home + term.clear, end='')
-            for i, attribute_name in enumerate(attribute_names):
-                value = str(results[current_record][i])
-                if i == current_attribute:
-                    print(f"-> {attribute_name}: {value}")
-                else:
-                    print(f"   {attribute_name}: {value}")
-
-            # Cursor naar de regel van het huidige attribuut verplaatsen
-            print(term.move_y(current_attribute + 1), end='', flush=True)  # +1 vanwege de headerregel
-
-            # Als er een boodschap is, toon deze onder de attributen
             if message:
-                print("\n" + message)
+                print(message, end='', flush=True)
+                # Cursor staat al op de juiste positie
+            else:
+                # Begin output vanaf regel 0
+                for i, attribute_name in enumerate(attribute_names):
+                    value = str(results[current_record][i])
+                    if i == current_attribute:
+                        print(f"-> {attribute_name}: {value}")
+                    else:
+                        print(f"   {attribute_name}: {value}")
+
+                # Cursor naar de regel van het huidige attribuut verplaatsen
+                print(term.move_xy(0, current_attribute), end='', flush=True)
 
         def get_input_with_escape(prompt):
             print(prompt, end='', flush=True)
@@ -735,6 +736,7 @@ def geschiedenis(conn, term):
                 if key.name == 'KEY_ESCAPE':
                     return None
                 elif key.name == 'KEY_ENTER':
+                    print()
                     return ''.join(buffer)
                 elif key.name == 'KEY_BACKSPACE':
                     if buffer:
@@ -754,59 +756,75 @@ def geschiedenis(conn, term):
 
             if key.name == 'KEY_ESCAPE':
                 break
-            elif key.name == 'KEY_UP':
-                current_attribute = (current_attribute - 1) % len(attribute_names)
-                message = None  # Boodschap wissen
-            elif key.name == 'KEY_DOWN':
-                current_attribute = (current_attribute + 1) % len(attribute_names)
-                message = None  # Boodschap wissen
-            elif key.name == 'KEY_RIGHT':
-                if current_record < len(results) - 1:
-                    current_record += 1
-                    message = None  # Boodschap wissen
-                else:
-                    # Aan het einde van de resultaten
-                    message = "Einde resultaten, druk op links om terug te gaan."
-            elif key.name == 'KEY_LEFT':
-                if current_record > 0:
-                    current_record -= 1
-                    message = None  # Boodschap wissen
-                else:
-                    # Aan het begin van de resultaten
-                    message = "Begin resultaten, druk op rechts om verder te gaan."
-            elif key == 'e':
-                if attribute_names[current_attribute] != 'id':
-                    print(term.clear())
-                    current_value = str(results[current_record][current_attribute])
-                    print(f"Huidige waarde: {current_value}")
-                    new_value = get_input_with_escape(f"Nieuwe waarde voor {attribute_names[current_attribute]} (Enter om huidige te behouden, ESC om te annuleren): ")
-
-                    if new_value is None:  # Gebruiker drukte op ESC
+            elif message:
+                # Als er een boodschap is, alleen links en rechts toestaan
+                if key.name == 'KEY_LEFT':
+                    if current_record > 0:
+                        current_record -= 1
                         message = None  # Boodschap wissen
-                        continue
-                    elif new_value == "":  # Gebruiker drukte op Enter zonder invoer
+                    else:
+                        # Al aan het begin
+                        message = "Begin resultaten, druk op rechts om verder te gaan."
+                elif key.name == 'KEY_RIGHT':
+                    if current_record < len(results) - 1:
+                        current_record += 1
                         message = None  # Boodschap wissen
-                        continue
+                    else:
+                        # Al aan het einde
+                        message = "Einde resultaten, druk op links om terug te gaan."
+                else:
+                    # Andere toetsen negeren
+                    pass
+            else:
+                if key.name == 'KEY_UP':
+                    current_attribute = (current_attribute - 1) % len(attribute_names)
+                elif key.name == 'KEY_DOWN':
+                    current_attribute = (current_attribute + 1) % len(attribute_names)
+                elif key.name == 'KEY_RIGHT':
+                    if current_record < len(results) - 1:
+                        current_record += 1
+                    else:
+                        # Aan het einde van de resultaten
+                        message = "Einde resultaten, druk op links om terug te gaan."
+                elif key.name == 'KEY_LEFT':
+                    if current_record > 0:
+                        current_record -= 1
+                    else:
+                        # Aan het begin van de resultaten
+                        message = "Begin resultaten, druk op rechts om verder te gaan."
+                elif key == 'e':
+                    if attribute_names[current_attribute] != 'id':
+                        clear_screen(term)
+                        current_value = str(results[current_record][current_attribute])
+                        print(f"Huidige waarde: {current_value}")
+                        new_value = get_input_with_escape(
+                            f"Nieuwe waarde voor {attribute_names[current_attribute]} (Enter om huidige te behouden, ESC om te annuleren): "
+                        )
 
-                    if attribute_names[current_attribute] == 'datum' and not validate_date(new_value):
-                        print("Verkeerd formaat datum. Gebruik YYYY/MM/DD.")
+                        if new_value is None:  # Gebruiker drukte op ESC
+                            continue
+                        elif new_value == "":  # Gebruiker drukte op Enter zonder invoer
+                            continue
+
+                        if attribute_names[current_attribute] == 'datum' and not validate_date(new_value):
+                            print("Verkeerd formaat datum. Gebruik YYYY/MM/DD.")
+                            input("Druk op Enter om verder te gaan...")
+                            continue
+
+                        try:
+                            update_query = sql.SQL(
+                                "UPDATE hoorspelen SET {} = %s WHERE id = %s"
+                            ).format(sql.Identifier(attribute_names[current_attribute]))
+                            cursor.execute(update_query, (new_value, results[current_record][0]))
+                            conn.commit()
+                            results[current_record] = list(results[current_record])
+                            results[current_record][current_attribute] = new_value
+                            print("Record succesvol bijgewerkt.")
+                        except Exception as e:
+                            conn.rollback()
+                            print(f"Fout bij het bijwerken van het record: {e}")
+
                         input("Druk op Enter om verder te gaan...")
-                        message = None  # Boodschap wissen
-                        continue
-
-                    try:
-                        update_query = sql.SQL("UPDATE hoorspelen SET {} = %s WHERE id = %s").format(sql.Identifier(attribute_names[current_attribute]))
-                        cursor.execute(update_query, (new_value, results[current_record][0]))
-                        conn.commit()
-                        results[current_record] = list(results[current_record])
-                        results[current_record][current_attribute] = new_value
-                        print("Record succesvol bijgewerkt.")
-                    except Exception as e:
-                        conn.rollback()
-                        print(f"Fout bij het bijwerken van het record: {e}")
-                    
-                    input("Druk op Enter om verder te gaan...")
-                    message = None  # Boodschap wissen
 
         cursor.close()
 
