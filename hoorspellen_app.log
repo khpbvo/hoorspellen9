@@ -126,3 +126,32 @@ HINT:  No operator matches the given name and argument types. You might need to 
 2024-09-21 19:12:48,495 - DEBUG - URL being requested: POST https://gmail.googleapis.com/gmail/v1/users/me/messages/send?alt=json
 2024-09-21 19:13:33,162 - INFO - file_cache is only supported with oauth2client<4.0.0
 2024-09-21 19:13:33,349 - DEBUG - URL being requested: POST https://gmail.googleapis.com/gmail/v1/users/me/messages/send?alt=json
+2024-10-07 19:50:16,762 - DEBUG - Making request: POST https://oauth2.googleapis.com/token
+2024-10-07 19:50:16,770 - DEBUG - Starting new HTTPS connection (1): oauth2.googleapis.com:443
+2024-10-07 19:50:16,896 - DEBUG - https://oauth2.googleapis.com:443 "POST /token HTTP/11" 200 None
+2024-10-07 19:50:16,911 - INFO - file_cache is only supported with oauth2client<4.0.0
+2024-10-07 19:50:16,958 - DEBUG - URL being requested: POST https://gmail.googleapis.com/gmail/v1/users/me/messages/send?alt=json
+2024-10-07 19:55:19,577 - INFO - file_cache is only supported with oauth2client<4.0.0
+2024-10-07 19:55:19,786 - DEBUG - URL being requested: POST https://gmail.googleapis.com/gmail/v1/users/me/messages/send?alt=json
+2024-10-07 19:58:07,037 - INFO - file_cache is only supported with oauth2client<4.0.0
+2024-10-07 19:58:07,416 - DEBUG - URL being requested: POST https://gmail.googleapis.com/gmail/v1/users/me/messages/send?alt=json
+2024-10-28 04:46:58,110 - DEBUG - Making request: POST https://oauth2.googleapis.com/token
+2024-10-28 04:46:58,110 - DEBUG - Starting new HTTPS connection (1): oauth2.googleapis.com:443
+2024-10-28 04:46:58,882 - DEBUG - https://oauth2.googleapis.com:443 "POST /token HTTP/1.1" 200 None
+2024-10-28 04:46:58,882 - INFO - file_cache is only supported with oauth2client<4.0.0
+2024-10-28 04:46:59,101 - DEBUG - URL being requested: POST https://gmail.googleapis.com/gmail/v1/users/me/messages/send?alt=json
+2024-10-28 04:50:02,693 - INFO - file_cache is only supported with oauth2client<4.0.0
+2024-10-28 04:50:02,880 - DEBUG - URL being requested: POST https://gmail.googleapis.com/gmail/v1/users/me/messages/send?alt=json
+2024-10-28 05:06:16,744 - INFO - file_cache is only supported with oauth2client<4.0.0
+2024-10-28 05:06:16,933 - DEBUG - URL being requested: POST https://gmail.googleapis.com/gmail/v1/users/me/messages/send?alt=json
+2024-10-28 05:12:11,488 - INFO - file_cache is only supported with oauth2client<4.0.0
+2024-10-28 05:12:11,674 - DEBUG - URL being requested: POST https://gmail.googleapis.com/gmail/v1/users/me/messages/send?alt=json
+2024-10-28 05:12:40,987 - INFO - file_cache is only supported with oauth2client<4.0.0
+2024-10-28 05:12:41,175 - DEBUG - URL being requested: POST https://gmail.googleapis.com/gmail/v1/users/me/messages/send?alt=json
+2024-11-10 16:14:50,196 - DEBUG - Making request: POST https://oauth2.googleapis.com/token
+2024-11-10 16:14:50,237 - DEBUG - Starting new HTTPS connection (1): oauth2.googleapis.com:443
+2024-11-10 16:14:50,702 - DEBUG - https://oauth2.googleapis.com:443 "POST /token HTTP/11" 200 None
+2024-11-10 16:14:50,726 - INFO - file_cache is only supported with oauth2client<4.0.0
+2024-11-10 16:14:51,041 - DEBUG - URL being requested: POST https://gmail.googleapis.com/gmail/v1/users/me/messages/send?alt=json
+2024-11-10 16:30:56,852 - INFO - file_cache is only supported with oauth2client<4.0.0
+2024-11-10 16:30:57,530 - DEBUG - URL being requested: POST https://gmail.googleapis.com/gmail/v1/users/me/messages/send?alt=json

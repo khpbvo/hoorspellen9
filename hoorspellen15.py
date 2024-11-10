@@ -1,5 +1,4 @@
 import sys
-import msvcrt
 import psycopg2
 from psycopg2 import sql
 import blessed
@@ -27,73 +26,79 @@ import time
 
 os.environ['SSL_CERT_FILE'] = certifi.where()
 
-# Make sure to set up logging at the beginning of your script
+# Zorg ervoor dat logging aan het begin van je script is ingesteld
 logging.basicConfig(filename='hoorspellen_app.log', level=logging.DEBUG,
                     format='%(asctime)s - %(levelname)s - %(message)s')
 
-# Database connection details
+# Database verbinding details
 def get_db_connection():
     return psycopg2.connect(
         dbname='hoorspellen',
         user='hoorspellen',
         password='1337Hoorspellen!@',
-        host='172.20.20.172',
+        host='192.168.99.218',
         port='5432'
     )
 
 def initialize_db(conn):
-    cursor = conn.cursor()
-    cursor.execute('''
-        CREATE TABLE IF NOT EXISTS hoorspelen (
-            id SERIAL PRIMARY KEY,
-            auteur TEXT,
-            titel TEXT,
-            regie TEXT,
-            datum TEXT,
-            omroep TEXT,
-            bandnr TEXT,
-            vertaling TEXT,
-            duur TEXT,
-            bewerking TEXT,
-            genre TEXT,
-            productie TEXT,
-            themareeks TEXT,
-            delen TEXT,
-            bijzverm TEXT,
-            taal TEXT
-        )
-    ''')
+    with conn.cursor() as cursor:
+        cursor.execute('''
+            CREATE TABLE IF NOT EXISTS hoorspelen (
+                id SERIAL PRIMARY KEY,
+                auteur TEXT,
+                titel TEXT,
+                regie TEXT,
+                datum TEXT,
+                omroep TEXT,
+                bandnr TEXT,
+                vertaling TEXT,
+                duur TEXT,
+                bewerking TEXT,
+                genre TEXT,
+                productie TEXT,
+                themareeks TEXT,
+                delen TEXT,
+                bijzverm TEXT,
+                taal TEXT
+            )
+        ''')
     conn.commit()
 
 def geavanceerd_submenu(conn, term):
     options = [
-        ("Importeren", lambda: import_function(conn)),
-        ("Exporteren", lambda: export_function(conn)),
-        ("DB Legen", lambda: clear_db_function(conn)),
+        ("Importeren", lambda: import_function(conn, term)),
+        ("Exporteren", lambda: export_function(conn, term)),
+        ("DB Legen", lambda: clear_db_function(conn, term)),
         ("Terug naar Hoofdmenu", None)
     ]
     current_option = 0
 
     while True:
-        os.system('cls' if os.name == 'nt' else 'clear')
+        print(term.home + term.clear, end='')
         for index, option in enumerate(options):
-            print(f"   {option[0]}")
-        # Move cursor back to the start of the line where the selected option is and clear to end of line.
-        print(f"\033[{len(options) - current_option}A\r-> {options[current_option][0]}\033[K", end='', flush=True)
+            if index == current_option:
+                print(f"-> {option[0]}")
+            else:
+                print(f"   {option[0]}")
 
-        key = msvcrt.getch()
-        if key in [b'\x00', b'\xe0']:  # Special keys (including arrows) are preceded by these bytes
-            key = msvcrt.getch()  # Fetch the actual key code
+        # Cursor naar de regel van de geselecteerde optie verplaatsen
+        print(term.move_y(current_option), end='', flush=True)
 
-        if key == b'\r':  # Enter key
-            if options[current_option][1] is None:  # "Terug naar Hoofdmenu" option
+        # Wacht op toetsdruk
+        with term.cbreak():
+            key = term.inkey()
+
+        if key.name == 'KEY_UP':
+            current_option = (current_option - 1) % len(options)
+        elif key.name == 'KEY_DOWN':
+            current_option = (current_option + 1) % len(options)
+        elif key.name == 'KEY_ENTER':
+            if options[current_option][1] is None:
                 break
             else:
-                options[current_option][1]()  # Execute the selected function
-        elif key == b'H':  # Up arrow key
-            current_option = (current_option - 1) % len(options)  # Move up in the list
-        elif key == b'P':  # Down arrow key
-            current_option = (current_option + 1) % len(options)  # Move down in the list
+                options[current_option][1]()
+        elif key.name == 'KEY_ESCAPE':
+            break
 
 def main_menu(conn, term):
     options = [
@@ -114,11 +119,11 @@ def main_menu(conn, term):
                 print(f"-> {option}")
             else:
                 print(f"   {option}")
-        
-        # Move cursor to the end of the selected option
-        selected_text = f"-> {options[current_option]}"
-        print(term.move_yx(current_option, len(selected_text)), end='', flush=True)
 
+        # Cursor naar de regel van de geselecteerde optie verplaatsen
+        print(term.move_y(current_option), end='', flush=True)
+
+        # Wacht op toetsdruk
         with term.cbreak():
             key = term.inkey()
 
@@ -127,7 +132,7 @@ def main_menu(conn, term):
         elif key.name == 'KEY_DOWN':
             current_option = (current_option + 1) % len(options)
         elif key.name == 'KEY_ENTER':
-            if current_option == len(options) - 1:  # "Afsluiten" option
+            if current_option == len(options) - 1:  # "Afsluiten" optie
                 print(term.home + term.clear)
                 print("Backup aan het maken, moment geduld.")
                 email_message = create_message_with_attachment(
@@ -135,7 +140,7 @@ def main_menu(conn, term):
                     "sjefsdatabasebackups@gmail.com",
                     "Hoorspelen backup",
                     "De backup van de hoorspelen",
-                    csv_path=export_function(conn)
+                    csv_path=export_function(conn, term)
                 )
                 service = gmail_service()
                 send_message(service, "me", email_message)
@@ -160,69 +165,72 @@ def main_menu(conn, term):
                 "sjefsdatabasebackups@gmail.com",
                 "Hoorspelen backup",
                 "De backup van de hoorspelen",
-                csv_path=export_function(conn)
+                csv_path=export_function(conn, term)
             )
             service = gmail_service()
             send_message(service, "me", email_message)
             return
 
-def import_function(conn):
-    filename = input("Voer het pad naar het CSV-bestand in: ")
+def import_function(conn, term):
+    clear_screen(term)
+    filename = get_input(term, "Voer het pad naar het CSV-bestand in: ")
+    if filename is None:
+        return
     try:
         with open(filename, 'r', newline='', encoding='utf-8') as csvfile:
             reader = csv.reader(csvfile)
-            # Optionally, skip the header if your CSV file includes one
-            next(reader, None)  # This skips the first line of the CSV which usually contains the header
+            # Sla de header over als je CSV-bestand er een bevat
+            next(reader, None)
             cursor = conn.cursor()
             for row in reader:
                 print(f"Importing row: {row}")  # Debugging statement
-                # Adjust this line if the structure is different
-                data_to_insert = row[1:]  # Exclude the first column (id) if your CSV includes it
+                data_to_insert = row[1:]
                 print(f"Data to insert: {data_to_insert}")  # Debugging statement
                 cursor.execute('''
                     INSERT INTO hoorspelen (auteur, titel, regie, datum, omroep, bandnr, vertaling, duur, bewerking, genre, productie, themareeks, delen, bijzverm, taal)
                     VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
                 ''', data_to_insert)
             conn.commit()
-        print("Importeren gelukt.")
+            clear_screen(term)
+        input("Importeren gelukt. Druk op Enter om verder te gaan...")
     except Exception as e:
-        print(f"Er is een fout opgetreden: {e}")
+        input(f"Er is een fout opgetreden: {e}. Druk op Enter om verder te gaan...")
 
-    input("Druk op Enter om verder te gaan...")
-
-def export_function(conn):
-    timestamp = datetime.datetime.now().strftime("%d-%m-%Y_%H-%M")  # Replacing ':' with '_'
+def export_function(conn, term):
+    timestamp = datetime.datetime.now().strftime("%d-%m-%Y_%H-%M-%S")
+    
     filename = f"hoorspellendb_{timestamp}.csv"
     try:
         with open(filename, 'w', newline='', encoding='utf-8') as csvfile:
-            cursor = conn.cursor()
-            cursor.execute("SELECT * FROM hoorspelen")
-            writer = csv.writer(csvfile)
-            writer.writerow([desc[0] for desc in cursor.description])  # Write headers
-            writer.writerows(cursor.fetchall())
+            with conn.cursor() as cursor:
+                cursor.execute("SELECT * FROM hoorspelen")
+                writer = csv.writer(csvfile)
+                writer.writerow([desc[0] for desc in cursor.description])  # Write headers
+                writer.writerows(cursor.fetchall())
+        clear_screen(term)
         print(f"Exporteren gelukt. Bestand opgeslagen als: {filename}")
-        return filename  # Return the filename for use in email attachment
+        return filename
     except Exception as e:
         print(f"Er is een fout opgetreden: {e}")
-        os.system('cls' if os.name == 'nt' else 'clear')
-        return None  # Return None to indicate failure
+        logging.error(f"Error during export: {e}")
+        return None
 
-    input("Druk op Enter om verder te gaan...")
-
-def clear_db_function(conn):
-    confirm = input("Weet u zeker dat u alle gegevens wilt wissen? Type 'ja' om te bevestigen: ")
+def clear_db_function(conn, term):
+    clear_screen(term)
+    confirm = get_input(term, "Weet u zeker dat u alle gegevens wilt wissen? Type 'ja' om te bevestigen: ")
     if confirm.lower() == 'ja':
         try:
             cursor = conn.cursor()
             cursor.execute("DELETE FROM hoorspelen")
             conn.commit()
-            print("Database geleegd.")
+            clear_screen(term)
+            input("Database geleegd. Druk op Enter om verder te gaan...")
         except Exception as e:
-            print(f"Er is een fout opgetreden: {e}")
+            clear_screen(term)
+            input(f"Er is een fout opgetreden: {e}. Druk op Enter om verder te gaan...")
     else:
-        print("Wissen geannuleerd.")
-
-    input("Druk op Enter om verder te gaan...")
+        clear_screen(term)
+        input("Wissen geannuleerd. Druk op Enter om verder te gaan...")
 
 def validate_date(date_string):
     try:
@@ -231,124 +239,120 @@ def validate_date(date_string):
     except ValueError:
         return False
 
-def get_input(prompt):
+def get_input(term, prompt):
     print(prompt, end='', flush=True)
     value = ''
     while True:
-        char = msvcrt.getch()
-        if char in (b'\r', b'\n'):  # Enter key
+        with term.cbreak():
+            key = term.inkey()
+        if key.name == 'KEY_ENTER':
+            print()  # Move to the next line
             break
-        elif char == b'\x08':  # Backspace key
-            value = value[:-1]
-            # Reprint the prompt and current value
-            print('\r' + ' ' * (len(prompt) + len(value) + 1) + '\r', end='', flush=True)
-            print(prompt + value, end='', flush=True)
-        elif char == b'\x1b':  # Escape key
-            print("\nExiting input...")
+        elif key.name == 'KEY_BACKSPACE':
+            if len(value) > 0:
+                value = value[:-1]
+                print('\b \b', end='', flush=True)
+        elif key.name == 'KEY_ESCAPE':
+            print("\nInvoer geannuleerd.")
             return None
         else:
-            value += char.decode()
-            print(char.decode(), end='', flush=True)
-    print()  # Print a newline
+            value += key
+            print(key, end='', flush=True)
     return value
 
-def clear_screen():
-    os.system('cls' if os.name == 'nt' else 'clear')
+def clear_screen(term):
+    print(term.home + term.clear, end='', flush=True)
 
 def voeg_toe(conn, term):
     logging.info("Starting voeg_toe function")
-    cursor = conn.cursor()
 
-    try:
-        cursor.execute('SELECT MAX(id) FROM hoorspelen')
-        max_id = cursor.fetchone()[0]
-        new_id = max_id + 1 if max_id is not None else 1
-        logging.info(f"New record ID will be: {new_id}")
-    except Exception as e:
-        logging.error(f"Error getting new ID: {e}")
-        print(term.clear + f"Error: {e}. Press any key to continue.")
-        term.inkey()
-        return
-
-    fields = ['auteur', 'titel', 'regie', 'datum', 'omroep', 'bandnr', 'vertaling', 'duur', 'bewerking', 'genre', 'productie', 'themareeks', 'delen', 'bijzverm', 'taal']
-    record = {field: "" for field in fields}
-    current_field = 0
-    error_message = ""
-
-    def display_form():
-        print(term.home + term.clear, end='')
-        for i, field in enumerate(fields):
-            if i == current_field:
-                print(f"-> {field}: {record[field]}", end='')
-                if error_message:
-                    print(f" {term.red(error_message)}", end='')
-                print()
-            else:
-                print(f"   {field}: {record[field]}")
-        
-        # Move cursor to the end of the selected option
-        print(term.move_yx(current_field, len(f"-> {fields[current_field]}: {record[fields[current_field]]}")), end='', flush=True)
-
-    def validate_record():
-        logging.info("Validating record")
-        if not is_valid_datum_format(record['datum']):
-            logging.warning(f"Invalid date format: {record['datum']}")
-            return "Verkeerde datum. Gebruik YYYY/MM/DD."
-        for field in fields:
-            if not record[field].strip():
-                logging.warning(f"Empty field: {field}")
-                return f"'{field}' mag niet leeg zijn."
-        logging.info("Record validation passed")
-        return None
-
-    while True:
-        display_form()
-
-        with term.cbreak():
-            key = term.inkey()
-
-        if key.name == 'KEY_ESCAPE':
-            logging.info("User pressed ESC, exiting voeg_toe")
+    with conn.cursor() as cursor:
+        try:
+            cursor.execute('SELECT MAX(id) FROM hoorspelen')
+            max_id = cursor.fetchone()[0]
+            new_id = max_id + 1 if max_id is not None else 1
+            logging.info(f"New record ID will be: {new_id}")
+        except Exception as e:
+            logging.error(f"Error getting new ID: {e}")
+            print(term.clear + f"Error: {e}. Druk op een toets om verder te gaan.")
+            term.inkey()
             return
-        elif key == '\x13':  # Ctrl+S
-            logging.info("User pressed Ctrl+S, attempting to save record")
-            error = validate_record()
-            if error:
-                error_message = error
-                logging.warning(f"Validation error: {error}")
-            else:
-                try:
-                    record_values = [new_id] + [record[field] for field in fields]
-                    placeholders = ', '.join(['%s'] * (len(fields) + 1))
-                    query = f'INSERT INTO hoorspelen (id, {", ".join(fields)}) VALUES ({placeholders})'
-                    logging.info(f"Executing SQL query: {query}")
-                    logging.info(f"Query parameters: {record_values}")
-                    cursor.execute(query, record_values)
-                    conn.commit()
-                    logging.info("Record successfully added to database")
-                    print(term.clear + "Record toegevoegd. Druk op een toets.")
-                    term.inkey()
-                    return
-                except Exception as e:
-                    error_message = f"Fout bij toevoegen: {e}"
-                    logging.error(f"Error adding record to database: {e}")
-        elif key.name == 'KEY_UP':
-            current_field = (current_field - 1) % len(fields)
-            error_message = ""
-        elif key.name == 'KEY_DOWN':
-            current_field = (current_field + 1) % len(fields)
-            error_message = ""
-        elif key.name == 'KEY_ENTER':
-            current_field = (current_field + 1) % len(fields)
-            error_message = ""
-        elif key.name == 'KEY_BACKSPACE':
-            record[fields[current_field]] = record[fields[current_field]][:-1]
-            error_message = ""
-        else:
-            record[fields[current_field]] += key
-            error_message = ""
 
-    cursor.close()
+        fields = ['auteur', 'titel', 'regie', 'datum', 'omroep', 'bandnr', 'vertaling', 'duur', 'bewerking', 'genre', 'productie', 'themareeks', 'delen', 'bijzverm', 'taal']
+        record = {field: "" for field in fields}
+        current_field = 0
+        error_message = ""
+
+        def display_form():
+            print(term.home + term.clear, end='')
+            for i, field in enumerate(fields):
+                if i == current_field:
+                    print(f"-> {field}: {record[field]}", end='')
+                    if error_message:
+                        print(f" {term.red(error_message)}", end='')
+                    print()
+                else:
+                    print(f"   {field}: {record[field]}")
+
+            # Cursor naar de regel van het huidige veld verplaatsen
+            print(term.move_y(current_field), end='', flush=True)
+
+        def validate_record():
+            logging.info("Validating record")
+            if not is_valid_datum_format(record['datum']):
+                logging.warning(f"Invalid date format: {record['datum']}")
+                return "Verkeerde datum. Gebruik YYYY/MM/DD."
+            for field in fields:
+                if not record[field].strip():
+                    logging.warning(f"Empty field: {field}")
+                    return f"'{field}' mag niet leeg zijn."
+            logging.info("Record validation passed")
+            return None
+
+        while True:
+            display_form()
+
+            with term.cbreak():
+                key = term.inkey()
+
+            if key.name == 'KEY_ESCAPE':
+                logging.info("User pressed ESC, exiting voeg_toe")
+                return
+            elif key.name == 'KEY_UP':
+                current_field = (current_field - 1) % len(fields)
+                error_message = ""
+            elif key.name == 'KEY_DOWN':
+                current_field = (current_field + 1) % len(fields)
+                error_message = ""
+            elif key.name == 'KEY_ENTER':
+                # Start invoer voor het huidige veld
+                new_value = get_input(term, f"Voer waarde in voor {fields[current_field]}: ")
+                if new_value is not None:
+                    record[fields[current_field]] = new_value
+                error_message = ""
+            elif key == '\x13':  # Ctrl+S om op te slaan
+                logging.info("User pressed Ctrl+S, attempting to save record")
+                error = validate_record()
+                if error:
+                    error_message = error
+                    logging.warning(f"Validation error: {error}")
+                else:
+                    try:
+                        record_values = [new_id] + [record[field] for field in fields]
+                        placeholders = ', '.join(['%s'] * (len(fields) + 1))
+                        query = f'INSERT INTO hoorspelen (id, {", ".join(fields)}) VALUES ({placeholders})'
+                        logging.info(f"Executing SQL query: {query}")
+                        logging.info(f"Query parameters: {record_values}")
+                        cursor.execute(query, record_values)
+                        conn.commit()
+                        logging.info("Record successfully added to database")
+                        print(term.clear + "Record toegevoegd. Druk op een toets om verder te gaan.")
+                        term.inkey()
+                        return
+                    except Exception as e:
+                        error_message = f"Fout bij toevoegen: {e}"
+                        logging.error(f"Error adding record to database: {e}")
+
     logging.info("Exiting voeg_toe function")
 
 def is_valid_datum_format(datum):
@@ -362,35 +366,34 @@ def is_valid_datum_format(datum):
         return False
 
 def bewerk_hoorspel(conn, term):
-    clear_screen = lambda: print(term.home + term.clear, end='', flush=True)
-
     # Prompt voor invoeren van ID
-    clear_screen()
-    entry_id = handle_input("Voer de ID in van de inzending die je wilt bewerken: ")
+    clear_screen(term)
+    entry_id = get_input(term, "Voer de ID in van de inzending die je wilt bewerken: ")
     if entry_id is None:
         return
 
     try:
         entry_id = int(entry_id)
     except ValueError:
-        print("Ongeldige invoer. Probeer opnieuw")
+        print("Ongeldige invoer. Probeer opnieuw.")
+        term.inkey()
         return
 
     # Query om de inzending met dit ID op te halen
-    cursor = conn.cursor()
-    cursor.execute("SELECT * FROM hoorspelen WHERE id = %s", (entry_id,))
-    entry = cursor.fetchone()
+    with conn.cursor() as cursor:
+        cursor.execute("SELECT * FROM hoorspelen WHERE id = %s", (entry_id,))
+        entry = cursor.fetchone()
 
     if entry:
         fields = ['auteur', 'titel', 'regie', 'datum', 'omroep', 'bandnr', 'vertaling', 'duur', 'bewerking', 'genre', 'productie', 'themareeks', 'delen', 'bijzverm', 'taal']
         current_field = 0
-        record = {field: entry[i+1] for i, field in enumerate(fields)}  # Op basis van SQL-resultaten
+        record = {field: entry[i+1] if entry[i+1] is not None else '' for i, field in enumerate(fields)}  # Op basis van SQL-resultaten
         error_message = ""
 
         def display_form():
             print(term.home + term.clear, end='')
             for i, field in enumerate(fields):
-                value = record[field] if record[field] is not None else ''
+                value = record[field]
                 if i == current_field:
                     print(f"-> {field}: {value}", end='')
                     if error_message:
@@ -398,9 +401,9 @@ def bewerk_hoorspel(conn, term):
                     print()
                 else:
                     print(f"   {field}: {value}")
-            
-            # Cursor positioneren
-            print(term.move_yx(current_field, len(f"-> {fields[current_field]}: {record[fields[current_field]]}")), end='', flush=True)
+
+            # Cursor naar de regel van het huidige veld verplaatsen
+            print(term.move_y(current_field), end='', flush=True)
 
         def validate_record():
             # Controleer of datum-formaat correct is
@@ -424,10 +427,11 @@ def bewerk_hoorspel(conn, term):
             elif key.name == 'KEY_DOWN':
                 current_field = (current_field + 1) % len(fields)
             elif key.name == 'KEY_ENTER':
-                clear_screen()
-                new_value = handle_input(f"Nieuwe waarde voor {fields[current_field]}: ")
-                if new_value:
+                # Start invoer voor het huidige veld
+                new_value = get_input(term, f"Nieuwe waarde voor {fields[current_field]}: ")
+                if new_value is not None:
                     record[fields[current_field]] = new_value
+                error_message = ""
             elif key == '\x13':  # Ctrl+S om op te slaan
                 error = validate_record()
                 if error:
@@ -438,19 +442,15 @@ def bewerk_hoorspel(conn, term):
                         query = f"UPDATE hoorspelen SET {placeholders} WHERE id = %s"
                         cursor.execute(query, [record[field] for field in fields] + [entry_id])
                         conn.commit()
-                        # Verplaats cursor direct achter de zin
-                        print(term.clear + "Record succesvol bijgewerkt. Druk op een toets.", end='')
-                        # Verplaats de cursor naar het einde van de tekst
-                        print(term.move_x(len("Record succesvol bijgewerkt. Druk op een toets.")), end='', flush=True)
+                        print(term.clear + "Record succesvol bijgewerkt. Druk op een toets om verder te gaan.")
                         term.inkey()
                         return
                     except Exception as e:
                         error_message = f"Fout bij bijwerken: {e}"
-                
+                        
     else:
         print("Inzending niet gevonden.")
-    
-    input("Druk op Enter om verder te gaan...")
+        term.inkey()
 
 valid_fields = [
     "id", "auteur", "titel", "regie", "datum", "omroep", "bandnr",
@@ -459,45 +459,44 @@ valid_fields = [
 ]
 
 def execute_search(conn, search_term, offset, limit, specific_field=None):
-    cursor = conn.cursor()
-
-    try:
-        # If a specific field is provided
-        if specific_field and specific_field in valid_fields:
-            if specific_field == 'id':
-                # Ensure the search term is a digit for 'id'
-                if not search_term.isdigit():
-                    raise ValueError("ID moet een numerieke waarde zijn.")
-                query = sql.SQL("SELECT * FROM hoorspelen WHERE {} = %s LIMIT %s OFFSET %s").format(sql.Identifier(specific_field))
-                cursor.execute(query, (search_term, limit, offset))
+    with conn.cursor() as cursor:
+        try:
+            # If a specific field is provided
+            if specific_field and specific_field in valid_fields:
+                if specific_field == 'id':
+                    # Ensure the search term is a digit for 'id'
+                    if not search_term.isdigit():
+                        raise ValueError("ID moet een numerieke waarde zijn.")
+                    query = sql.SQL("SELECT * FROM hoorspelen WHERE {} = %s LIMIT %s OFFSET %s").format(sql.Identifier(specific_field))
+                    cursor.execute(query, (search_term, limit, offset))
+                else:
+                    # Use ILIKE for text fields
+                    query = sql.SQL("SELECT * FROM hoorspelen WHERE {} ILIKE %s LIMIT %s OFFSET %s").format(sql.Identifier(specific_field))
+                    cursor.execute(query, (f"%{search_term}%", limit, offset))
             else:
-                # Use ILIKE for text fields
-                query = sql.SQL("SELECT * FROM hoorspelen WHERE {} ILIKE %s LIMIT %s OFFSET %s").format(sql.Identifier(specific_field))
-                cursor.execute(query, (f"%{search_term}%", limit, offset))
-        else:
-            conditions = []
-            params = []
+                conditions = []
+                params = []
 
-            for field in valid_fields:
-                if field != 'id':
-                    conditions.append(sql.SQL("{} ILIKE %s").format(sql.Identifier(field)))
-                    params.append(f"%{search_term}%")
+                for field in valid_fields:
+                    if field != 'id':
+                        conditions.append(sql.SQL("{} ILIKE %s").format(sql.Identifier(field)))
+                        params.append(f"%{search_term}%")
 
-            if search_term.isdigit():
-                conditions.append(sql.SQL("{} = %s").format(sql.Identifier('id')))
-                params.append(search_term)
+                if search_term.isdigit():
+                    conditions.append(sql.SQL("{} = %s").format(sql.Identifier('id')))
+                    params.append(search_term)
 
-            query = sql.SQL("SELECT * FROM hoorspelen WHERE {} LIMIT %s OFFSET %s").format(sql.SQL(" OR ").join(conditions))
-            cursor.execute(query, params + [limit, offset])
+                query = sql.SQL("SELECT * FROM hoorspelen WHERE {} LIMIT %s OFFSET %s").format(sql.SQL(" OR ").join(conditions))
+                cursor.execute(query, params + [limit, offset])
 
-        results = cursor.fetchall()
-        cursor.close()
-        return results
+            results = cursor.fetchall()
+            return results
 
-    except Exception as e:
-        conn.rollback()
-        logging.error(f"An error occurred in execute_search: {e}")
-        raise
+        except Exception as e:
+            conn.rollback()
+            logging.error(f"An error occurred in execute_search: {e}")
+            raise
+
 def zoek_hoorspellen(conn, term):
     def clear_screen():
         print(term.home + term.clear, end='', flush=True)
@@ -505,7 +504,7 @@ def zoek_hoorspellen(conn, term):
     try:
         while True:
             clear_screen()
-            print("Voer zoekterm in of veld:zoekwoord (ESC om terug te gaan) ", end='', flush=True)
+            print("Voer zoekterm in of veld:zoekwoord (ESC om terug te gaan): ", end='', flush=True)
             search_term = ''
             specific_field = None
 
@@ -573,35 +572,19 @@ def display_search_results(conn, term, results, search_term, offset, limit):
         print(term.home + term.clear, end='', flush=True)
         print(f"Resultaat {current_record + 1} van {len(results)}")
 
-        # Initialize variables to store cursor position
-        selected_line_number = None
-        selected_line_length = None
-
         # Print each attribute
         for i, attribute_name in enumerate(valid_fields):
             value = str(results[current_record][i])
 
             if i == current_attribute:
                 # Selected attribute
-                line_content = f"-> {attribute_name}: {value}"
-                print(term.bold(line_content))
-                # Record the line number and length
-                selected_line_number = i + 1  # +1 because of the header line
-                selected_line_length = len(line_content)
+                print(f"-> {attribute_name}: {value}")
             else:
                 # Other attributes
-                line_content = f"   {attribute_name}: {value}"
-                print(line_content)
+                print(f"   {attribute_name}: {value}")
 
-        # After printing all lines, move the cursor to the end of the selected line
-        if selected_line_number is not None and selected_line_length is not None:
-            # Calculate cursor position
-            # Rows and columns start from 0 in term.move()
-            cursor_row = selected_line_number
-            cursor_col = selected_line_length
-
-            # Move the cursor to the position
-            print(term.move(cursor_row, cursor_col), end='', flush=True)
+        # Cursor naar de regel van het huidige attribuut verplaatsen
+        print(term.move_y(current_attribute + 1), end='', flush=True)  # +1 vanwege de headerregel
 
         # Wait for user input
         with term.cbreak():
@@ -639,10 +622,7 @@ def display_search_results(conn, term, results, search_term, offset, limit):
             pass
 
 def edit_field(conn, term, results, current_record, current_attribute):
-    def clear_screen():
-        print(term.home + term.clear, end='', flush=True)
-
-    clear_screen()
+    clear_screen(term)
     field_name = valid_fields[current_attribute]
     current_value = results[current_record][current_attribute]
 
@@ -696,33 +676,21 @@ def edit_field(conn, term, results, current_record, current_attribute):
 
 def toon_totaal_hoorspellen(conn, term):
     try:
-        cursor = conn.cursor()
-        cursor.execute("SELECT COUNT(*) FROM hoorspelen")
-        total = cursor.fetchone()[0]
-
-        # Clear the screen and display the information
-        print(term.home + term.clear, end='')
-        info_line = f"Totaal aantal hoorspellen: {total}. Druk op Toets."
-        print(info_line, end='')
-
-        # Move the cursor to the end of the information line
-        print(term.move_x(len(info_line)), end='', flush=True)
-
-        # Wait for a keypress
-        with term.cbreak():
-            term.inkey()
-
+        with conn.cursor() as cursor:
+            cursor.execute("SELECT COUNT(*) FROM hoorspelen")
+            total = cursor.fetchone()[0]
+        # Display message and wait for keypress
+        clear_screen(term)
+        message = f"Totaal aantal hoorspellen: {total}. Druk op een toets om verder te gaan..."
+        pause(term, message)
     except Exception as e:
-        print(term.home + term.clear, end='')
-        error_message = f"Er is een fout opgetreden: {e}. Druk op een toets."
-        print(error_message, end='')
-        print(term.move_x(len(error_message)), end='', flush=True)
-        with term.cbreak():
-            term.inkey()
+        clear_screen(term)
+        pause(term, f"Er is een fout opgetreden: {e}. Druk op een toets om verder te gaan...")
 
-    finally:
-        if cursor:
-            cursor.close()
+def pause(term, message):
+    print(message, end='', flush=True)
+    with term.cbreak():
+        term.inkey()
 
 def geschiedenis(conn, term):
     try:
@@ -740,6 +708,7 @@ def geschiedenis(conn, term):
         current_record = 0
         current_attribute = 0
         attribute_names = [desc[0] for desc in cursor.description]
+        message = None  # Variabele om boodschappen op te slaan
 
         def display_record():
             print(term.home + term.clear, end='')
@@ -749,9 +718,13 @@ def geschiedenis(conn, term):
                     print(f"-> {attribute_name}: {value}")
                 else:
                     print(f"   {attribute_name}: {value}")
-            
-            selected_text = f"-> {attribute_names[current_attribute]}: {results[current_record][current_attribute]}"
-            print(term.move_yx(current_attribute, len(selected_text)), end='', flush=True)
+
+            # Cursor naar de regel van het huidige attribuut verplaatsen
+            print(term.move_y(current_attribute + 1), end='', flush=True)  # +1 vanwege de headerregel
+
+            # Als er een boodschap is, toon deze onder de attributen
+            if message:
+                print("\n" + message)
 
         def get_input_with_escape(prompt):
             print(prompt, end='', flush=True)
@@ -783,29 +756,42 @@ def geschiedenis(conn, term):
                 break
             elif key.name == 'KEY_UP':
                 current_attribute = (current_attribute - 1) % len(attribute_names)
+                message = None  # Boodschap wissen
             elif key.name == 'KEY_DOWN':
                 current_attribute = (current_attribute + 1) % len(attribute_names)
+                message = None  # Boodschap wissen
             elif key.name == 'KEY_RIGHT':
                 if current_record < len(results) - 1:
                     current_record += 1
+                    message = None  # Boodschap wissen
+                else:
+                    # Aan het einde van de resultaten
+                    message = "Einde resultaten, druk op links om terug te gaan."
             elif key.name == 'KEY_LEFT':
                 if current_record > 0:
                     current_record -= 1
+                    message = None  # Boodschap wissen
+                else:
+                    # Aan het begin van de resultaten
+                    message = "Begin resultaten, druk op rechts om verder te gaan."
             elif key == 'e':
                 if attribute_names[current_attribute] != 'id':
                     print(term.clear())
                     current_value = str(results[current_record][current_attribute])
-                    print(f"Current value: {current_value}")
-                    new_value = get_input_with_escape(f"New value for {attribute_names[current_attribute]} (press Enter to keep current, ESC to cancel): ")
+                    print(f"Huidige waarde: {current_value}")
+                    new_value = get_input_with_escape(f"Nieuwe waarde voor {attribute_names[current_attribute]} (Enter om huidige te behouden, ESC om te annuleren): ")
 
-                    if new_value is None:  # User pressed ESC
+                    if new_value is None:  # Gebruiker drukte op ESC
+                        message = None  # Boodschap wissen
                         continue
-                    elif new_value == "":  # User pressed Enter without input
+                    elif new_value == "":  # Gebruiker drukte op Enter zonder invoer
+                        message = None  # Boodschap wissen
                         continue
 
                     if attribute_names[current_attribute] == 'datum' and not validate_date(new_value):
                         print("Verkeerd formaat datum. Gebruik YYYY/MM/DD.")
                         input("Druk op Enter om verder te gaan...")
+                        message = None  # Boodschap wissen
                         continue
 
                     try:
@@ -814,12 +800,15 @@ def geschiedenis(conn, term):
                         conn.commit()
                         results[current_record] = list(results[current_record])
                         results[current_record][current_attribute] = new_value
-                        print("Record updated successfully.")
+                        print("Record succesvol bijgewerkt.")
                     except Exception as e:
                         conn.rollback()
-                        print(f"Error updating record: {e}")
+                        print(f"Fout bij het bijwerken van het record: {e}")
                     
                     input("Druk op Enter om verder te gaan...")
+                    message = None  # Boodschap wissen
+
+        cursor.close()
 
     except Exception as e:
         print(term.clear())
@@ -829,14 +818,14 @@ def geschiedenis(conn, term):
         if cursor:
             cursor.close()
 
-# Gmail-related functions
+# Gmail-gerelateerde functies
 SCOPES = ['https://www.googleapis.com/auth/gmail.send']
 
 def gmail_service():
     creds = None
     service = None
 
-    # Ensure that the token.pickle and credentials file paths are correct
+    # Zorg ervoor dat de token.pickle en credentials bestandslocaties correct zijn
     token_path = 'token.pickle'
     credentials_path = "client_secret_909008488627-c1gda8u30p8ssck0rsrcrs46p88mimb2.apps.googleusercontent.com.json"
 
@@ -844,7 +833,7 @@ def gmail_service():
         with open(token_path, 'rb') as token:
             creds = pickle.load(token)
 
-    # Check if the credentials are expired or missing
+    # Controleer of de credentials verlopen of ontbreken
     if not creds or not creds.valid:
         if creds and creds.expired and creds.refresh_token:
             creds.refresh(Request())
@@ -856,12 +845,12 @@ def gmail_service():
                 print(f"Error: Kan de login gegevens niet vinden '{credentials_path}'.")
                 return None
 
-        # Save the credentials for the next run
+        # Sla de credentials op voor de volgende keer
         with open(token_path, 'wb') as token:
             pickle.dump(creds, token)
 
     if creds:
-        # Build the service after ensuring credentials are valid
+        # Bouw de service na het verifiëren van de credentials
         service = build('gmail', 'v1', credentials=creds)
     else:
         print("Geen valide login.")
@@ -905,10 +894,10 @@ def send_message(service, user_id, message):
         print(f'An error occurred: {error}')
 
 def export_and_email_backup(service, conn, email_address):
-    csv_path = export_function(conn)
+    csv_path = export_function(conn, term)
     if csv_path:
         sender = "me"
-        to = email_address  # Ensure this is the recipient's email address
+        to = email_address  # Zorg ervoor dat dit het e-mailadres van de ontvanger is
         subject = "Database Backup"
         message_text = "Attached is the database backup."
         message = create_message_with_attachment(sender, to, subject, message_text, csv_path)
