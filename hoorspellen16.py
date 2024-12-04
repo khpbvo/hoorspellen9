@@ -36,7 +36,7 @@ def get_db_connection():
         dbname='hoorspellen',
         user='hoorspellen',
         password='1337Hoorspellen!@',
-        host='192.168.99.218',
+        host='192.168.88.49',
         port='5432',
         # Stel het isolatieniveau in indien nodig
         # isolation_level=psycopg2.extensions.ISOLATION_LEVEL_READ_COMMITTED
@@ -343,7 +343,7 @@ def voeg_toe(conn, term):
                     error_message = f"Fout bij toevoegen: {e}"
                     logging.error(f"Error adding record to database: {e}")
 
-    logging.info("Exiting voeg_toe function")
+        logging.info("Exiting voeg_toe function")
 
 def is_valid_datum_format(datum):
     if not re.match(r'^\d{4}/\d{2}/\d{2}$', datum):

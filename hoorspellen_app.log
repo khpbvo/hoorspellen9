@@ -164,3 +164,34 @@ HINT:  No operator matches the given name and argument types. You might need to 
 2024-11-10 17:16:00,020 - DEBUG - URL being requested: POST https://gmail.googleapis.com/gmail/v1/users/me/messages/send?alt=json
 2024-11-10 17:23:24,470 - INFO - file_cache is only supported with oauth2client<4.0.0
 2024-11-10 17:23:24,836 - DEBUG - URL being requested: POST https://gmail.googleapis.com/gmail/v1/users/me/messages/send?alt=json
+2024-11-10 23:40:02,893 - INFO - Starting voeg_toe function
+2024-11-10 23:41:01,007 - INFO - User pressed ESC, exiting voeg_toe
+2024-11-10 23:41:04,852 - DEBUG - Making request: POST https://oauth2.googleapis.com/token
+2024-11-10 23:41:04,918 - DEBUG - Starting new HTTPS connection (1): oauth2.googleapis.com:443
+2024-11-10 23:41:05,152 - DEBUG - https://oauth2.googleapis.com:443 "POST /token HTTP/11" 200 None
+2024-11-10 23:41:05,168 - INFO - file_cache is only supported with oauth2client<4.0.0
+2024-11-10 23:41:10,277 - DEBUG - URL being requested: POST https://gmail.googleapis.com/gmail/v1/users/me/messages/send?alt=json
+2024-12-04 13:31:50,841 - INFO - Starting voeg_toe function
+2024-12-04 13:33:08,997 - INFO - User pressed Ctrl+S, attempting to save record
+2024-12-04 13:33:09,014 - INFO - Validating record
+2024-12-04 13:33:09,014 - WARNING - Invalid date format: 
+2024-12-04 13:33:09,014 - WARNING - Validation error: Verkeerde datum. Gebruik YYYY/MM/DD.
+2024-12-04 13:33:23,665 - INFO - User pressed Ctrl+S, attempting to save record
+2024-12-04 13:33:23,665 - INFO - Validating record
+2024-12-04 13:33:23,665 - WARNING - Empty field: omroep
+2024-12-04 13:33:23,665 - WARNING - Validation error: 'omroep' mag niet leeg zijn.
+2024-12-04 13:33:32,608 - INFO - User pressed Ctrl+S, attempting to save record
+2024-12-04 13:33:32,608 - INFO - Validating record
+2024-12-04 13:33:32,608 - WARNING - Empty field: bandnr
+2024-12-04 13:33:32,608 - WARNING - Validation error: 'bandnr' mag niet leeg zijn.
+2024-12-04 13:34:09,881 - INFO - User pressed Ctrl+S, attempting to save record
+2024-12-04 13:34:09,881 - INFO - Validating record
+2024-12-04 13:34:09,881 - INFO - Record validation passed
+2024-12-04 13:34:09,939 - INFO - Record successfully added to database with ID 128285
+2024-12-04 13:34:13,882 - INFO - Starting voeg_toe function
+2024-12-04 13:34:16,332 - INFO - User pressed ESC, exiting voeg_toe
+2024-12-04 13:34:58,332 - DEBUG - Making request: POST https://oauth2.googleapis.com/token
+2024-12-04 13:34:58,348 - DEBUG - Starting new HTTPS connection (1): oauth2.googleapis.com:443
+2024-12-04 13:34:58,490 - DEBUG - https://oauth2.googleapis.com:443 "POST /token HTTP/11" 200 None
+2024-12-04 13:34:58,504 - INFO - file_cache is only supported with oauth2client<4.0.0
+2024-12-04 13:34:58,757 - DEBUG - URL being requested: POST https://gmail.googleapis.com/gmail/v1/users/me/messages/send?alt=json
