@@ -284,8 +284,8 @@ def voeg_toe(conn, term):
             else:
                 print(f"   {field}: {record[field]}")
 
-        # Cursor naar de regel van het huidige veld verplaatsen
-        print(term.move_y(current_field), end='', flush=True)
+        # Move cursor to the current field line
+        print(term.move_xy(3 + len(fields[current_field]) + 2, current_field), end='', flush=True)
 
     def validate_record():
         logging.info("Validating record")
@@ -315,12 +315,30 @@ def voeg_toe(conn, term):
             current_field = (current_field + 1) % len(fields)
             error_message = ""
         elif key.name == 'KEY_ENTER':
-            # Start invoer voor het huidige veld
-            new_value = get_input(term, f"Voer waarde in voor {fields[current_field]}: ")
-            if new_value is not None:
-                record[fields[current_field]] = new_value
+            # Clear screen and show input prompt on same line as cursor
+            print(term.home + term.clear, end='')
+            print(f"-> Voer waarde in voor {fields[current_field]}: ", end='', flush=True)
+            
+            value = ''
+            while True:
+                with term.cbreak():
+                    input_key = term.inkey()
+                
+                if input_key.name == 'KEY_ENTER':
+                    record[fields[current_field]] = value
+                    break
+                elif input_key.name == 'KEY_ESCAPE':
+                    break
+                elif input_key.name == 'KEY_BACKSPACE':
+                    if value:
+                        value = value[:-1]
+                        print('\b \b', end='', flush=True)
+                else:
+                    value += input_key
+                    print(input_key, end='', flush=True)
+            
             error_message = ""
-        elif key == '\x13':  # Ctrl+S om op te slaan
+        elif key == '\x13':  # Ctrl+S to save
             logging.info("User pressed Ctrl+S, attempting to save record")
             error = validate_record()
             if error:
@@ -336,7 +354,7 @@ def voeg_toe(conn, term):
                             cursor.execute(query, record_values)
                             new_id = cursor.fetchone()[0]
                     logging.info(f"Record successfully added to database with ID {new_id}")
-                    print(term.clear + "Record toegevoegd. Druk op een toets om verder te gaan.")
+                    print(term.home + term.clear + "-> Record toegevoegd. Druk op een toets om verder te gaan.", end='', flush=True)
                     term.inkey()
                     return
                 except Exception as e:

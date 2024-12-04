@@ -195,3 +195,103 @@ HINT:  No operator matches the given name and argument types. You might need to 
 2024-12-04 13:34:58,490 - DEBUG - https://oauth2.googleapis.com:443 "POST /token HTTP/11" 200 None
 2024-12-04 13:34:58,504 - INFO - file_cache is only supported with oauth2client<4.0.0
 2024-12-04 13:34:58,757 - DEBUG - URL being requested: POST https://gmail.googleapis.com/gmail/v1/users/me/messages/send?alt=json
+2024-12-04 16:16:08,245 - INFO - Starting voeg_toe function
+2024-12-04 16:16:14,417 - INFO - Exiting voeg_toe function
+2024-12-04 16:16:15,128 - INFO - Exiting voeg_toe function
+2024-12-04 16:16:26,545 - INFO - Exiting voeg_toe function
+2024-12-04 16:16:27,120 - INFO - Exiting voeg_toe function
+2024-12-04 16:16:30,155 - INFO - Exiting voeg_toe function
+2024-12-04 16:16:30,771 - INFO - Exiting voeg_toe function
+2024-12-04 16:16:47,101 - INFO - Exiting voeg_toe function
+2024-12-04 16:16:48,160 - INFO - Exiting voeg_toe function
+2024-12-04 16:16:53,260 - INFO - Exiting voeg_toe function
+2024-12-04 16:16:53,925 - INFO - Exiting voeg_toe function
+2024-12-04 16:16:56,064 - INFO - Exiting voeg_toe function
+2024-12-04 16:16:56,814 - INFO - Exiting voeg_toe function
+2024-12-04 16:16:56,857 - INFO - Exiting voeg_toe function
+2024-12-04 16:16:57,606 - INFO - Exiting voeg_toe function
+2024-12-04 16:17:02,278 - INFO - Exiting voeg_toe function
+2024-12-04 16:17:03,712 - INFO - Exiting voeg_toe function
+2024-12-04 16:17:05,663 - INFO - Exiting voeg_toe function
+2024-12-04 16:17:06,987 - INFO - Exiting voeg_toe function
+2024-12-04 16:17:12,770 - INFO - Exiting voeg_toe function
+2024-12-04 16:17:13,254 - INFO - Exiting voeg_toe function
+2024-12-04 16:17:15,228 - INFO - Exiting voeg_toe function
+2024-12-04 16:17:16,051 - INFO - Exiting voeg_toe function
+2024-12-04 16:17:20,879 - INFO - Exiting voeg_toe function
+2024-12-04 16:17:21,597 - INFO - Exiting voeg_toe function
+2024-12-04 16:17:24,394 - INFO - Exiting voeg_toe function
+2024-12-04 16:17:24,914 - INFO - Exiting voeg_toe function
+2024-12-04 16:17:25,389 - INFO - Exiting voeg_toe function
+2024-12-04 16:17:27,053 - INFO - Exiting voeg_toe function
+2024-12-04 16:17:27,970 - INFO - Exiting voeg_toe function
+2024-12-04 16:17:30,346 - INFO - Exiting voeg_toe function
+2024-12-04 16:17:30,885 - INFO - Exiting voeg_toe function
+2024-12-04 16:17:33,409 - INFO - Exiting voeg_toe function
+2024-12-04 16:17:36,004 - INFO - User pressed Ctrl+S, attempting to save record
+2024-12-04 16:17:36,004 - INFO - Validating record
+2024-12-04 16:17:36,007 - WARNING - Empty field: genre
+2024-12-04 16:17:36,007 - WARNING - Validation error: 'genre' mag niet leeg zijn.
+2024-12-04 16:17:36,007 - INFO - Exiting voeg_toe function
+2024-12-04 16:17:38,641 - INFO - Exiting voeg_toe function
+2024-12-04 16:17:39,277 - INFO - Exiting voeg_toe function
+2024-12-04 16:17:39,518 - INFO - Exiting voeg_toe function
+2024-12-04 16:17:39,702 - INFO - Exiting voeg_toe function
+2024-12-04 16:17:39,926 - INFO - Exiting voeg_toe function
+2024-12-04 16:17:40,108 - INFO - Exiting voeg_toe function
+2024-12-04 16:17:40,725 - INFO - Exiting voeg_toe function
+2024-12-04 16:17:41,046 - INFO - Exiting voeg_toe function
+2024-12-04 16:17:41,292 - INFO - Exiting voeg_toe function
+2024-12-04 16:17:41,515 - INFO - Exiting voeg_toe function
+2024-12-04 16:17:50,367 - INFO - Exiting voeg_toe function
+2024-12-04 16:17:51,226 - INFO - Exiting voeg_toe function
+2024-12-04 16:17:51,416 - INFO - Exiting voeg_toe function
+2024-12-04 16:17:52,894 - INFO - User pressed Ctrl+S, attempting to save record
+2024-12-04 16:17:52,894 - INFO - Validating record
+2024-12-04 16:17:52,894 - INFO - Record validation passed
+2024-12-04 16:17:52,957 - INFO - Record successfully added to database with ID 128286
+2024-12-04 16:20:03,002 - INFO - Starting voeg_toe function
+2024-12-04 16:20:03,385 - INFO - User pressed ESC, exiting voeg_toe
+2024-12-04 16:20:07,940 - DEBUG - Making request: POST https://oauth2.googleapis.com/token
+2024-12-04 16:20:07,956 - DEBUG - Starting new HTTPS connection (1): oauth2.googleapis.com:443
+2024-12-04 16:20:08,098 - DEBUG - https://oauth2.googleapis.com:443 "POST /token HTTP/11" 200 None
+2024-12-04 16:20:08,121 - INFO - file_cache is only supported with oauth2client<4.0.0
+2024-12-04 16:20:08,667 - DEBUG - URL being requested: POST https://gmail.googleapis.com/gmail/v1/users/me/messages/send?alt=json
+2024-12-04 16:20:20,565 - INFO - Starting voeg_toe function
+2024-12-04 16:20:27,022 - INFO - Exiting voeg_toe function
+2024-12-04 16:20:28,292 - INFO - Exiting voeg_toe function
+2024-12-04 16:20:31,429 - INFO - Exiting voeg_toe function
+2024-12-04 16:20:31,850 - INFO - Exiting voeg_toe function
+2024-12-04 16:20:34,358 - INFO - Exiting voeg_toe function
+2024-12-04 16:20:35,138 - INFO - Exiting voeg_toe function
+2024-12-04 16:20:45,682 - INFO - Exiting voeg_toe function
+2024-12-04 16:20:46,198 - INFO - Exiting voeg_toe function
+2024-12-04 16:20:50,788 - INFO - Exiting voeg_toe function
+2024-12-04 16:20:51,300 - INFO - Exiting voeg_toe function
+2024-12-04 16:20:57,583 - INFO - Exiting voeg_toe function
+2024-12-04 16:20:58,271 - INFO - Exiting voeg_toe function
+2024-12-04 16:21:00,798 - INFO - Exiting voeg_toe function
+2024-12-04 16:21:01,299 - INFO - Exiting voeg_toe function
+2024-12-04 16:21:03,756 - INFO - Exiting voeg_toe function
+2024-12-04 16:21:04,592 - INFO - Exiting voeg_toe function
+2024-12-04 16:21:07,586 - INFO - Exiting voeg_toe function
+2024-12-04 16:21:08,065 - INFO - Exiting voeg_toe function
+2024-12-04 16:21:10,468 - INFO - Exiting voeg_toe function
+2024-12-04 16:21:10,892 - INFO - Exiting voeg_toe function
+2024-12-04 16:21:19,311 - INFO - Exiting voeg_toe function
+2024-12-04 16:21:19,733 - INFO - Exiting voeg_toe function
+2024-12-04 16:21:31,713 - INFO - Exiting voeg_toe function
+2024-12-04 16:21:32,183 - INFO - Exiting voeg_toe function
+2024-12-04 16:21:34,151 - INFO - Exiting voeg_toe function
+2024-12-04 16:21:34,739 - INFO - Exiting voeg_toe function
+2024-12-04 16:21:39,878 - INFO - Exiting voeg_toe function
+2024-12-04 16:21:40,430 - INFO - Exiting voeg_toe function
+2024-12-04 16:21:42,668 - INFO - Exiting voeg_toe function
+2024-12-04 16:21:45,682 - INFO - User pressed Ctrl+S, attempting to save record
+2024-12-04 16:21:45,682 - INFO - Validating record
+2024-12-04 16:21:45,685 - INFO - Record validation passed
+2024-12-04 16:21:45,716 - INFO - Record successfully added to database with ID 128287
+2024-12-04 16:21:51,310 - INFO - Starting voeg_toe function
+2024-12-04 16:21:51,688 - INFO - User pressed ESC, exiting voeg_toe
+2024-12-04 16:21:57,052 - INFO - file_cache is only supported with oauth2client<4.0.0
+2024-12-04 16:21:57,262 - DEBUG - URL being requested: POST https://gmail.googleapis.com/gmail/v1/users/me/messages/send?alt=json
