@@ -295,3 +295,48 @@ HINT:  No operator matches the given name and argument types. You might need to 
 2024-12-04 16:21:51,688 - INFO - User pressed ESC, exiting voeg_toe
 2024-12-04 16:21:57,052 - INFO - file_cache is only supported with oauth2client<4.0.0
 2024-12-04 16:21:57,262 - DEBUG - URL being requested: POST https://gmail.googleapis.com/gmail/v1/users/me/messages/send?alt=json
+2024-12-05 23:03:02,695 - DEBUG - Making request: POST https://oauth2.googleapis.com/token
+2024-12-05 23:03:02,711 - DEBUG - Starting new HTTPS connection (1): oauth2.googleapis.com:443
+2024-12-05 23:03:02,837 - DEBUG - https://oauth2.googleapis.com:443 "POST /token HTTP/11" 200 None
+2024-12-05 23:03:02,853 - INFO - file_cache is only supported with oauth2client<4.0.0
+2024-12-05 23:03:03,120 - DEBUG - URL being requested: POST https://gmail.googleapis.com/gmail/v1/users/me/messages/send?alt=json
+2024-12-06 00:25:00,740 - INFO - Starting voeg_toe function
+2024-12-06 00:25:03,553 - INFO - User pressed Ctrl+S, attempting to save record
+2024-12-06 00:25:03,553 - INFO - Validating record
+2024-12-06 00:25:03,553 - WARNING - Invalid date format: 
+2024-12-06 00:25:03,553 - WARNING - Validation error: Verkeerde datum. Gebruik YYYY/MM/DD.
+2024-12-06 00:25:03,553 - INFO - Exiting voeg_toe function
+2024-12-06 00:30:26,248 - INFO - User pressed ESC, exiting voeg_toe
+2024-12-06 00:30:30,260 - DEBUG - Making request: POST https://oauth2.googleapis.com/token
+2024-12-06 00:30:30,276 - DEBUG - Starting new HTTPS connection (1): oauth2.googleapis.com:443
+2024-12-06 00:30:30,433 - DEBUG - https://oauth2.googleapis.com:443 "POST /token HTTP/11" 200 None
+2024-12-06 00:30:30,448 - INFO - file_cache is only supported with oauth2client<4.0.0
+2024-12-06 00:30:30,625 - DEBUG - URL being requested: POST https://gmail.googleapis.com/gmail/v1/users/me/messages/send?alt=json
+2024-12-06 00:30:40,614 - INFO - Starting voeg_toe function
+2024-12-06 00:30:43,573 - INFO - User pressed Ctrl+S, attempting to save record
+2024-12-06 00:30:43,573 - INFO - Validating record
+2024-12-06 00:30:43,573 - WARNING - Invalid date format: 
+2024-12-06 00:30:45,766 - INFO - Exiting voeg_toe function
+2024-12-06 00:30:47,086 - INFO - Exiting voeg_toe function
+2024-12-06 00:30:47,269 - INFO - Exiting voeg_toe function
+2024-12-06 00:30:47,706 - INFO - Exiting voeg_toe function
+2024-12-06 00:30:48,574 - INFO - Exiting voeg_toe function
+2024-12-06 00:30:49,591 - INFO - Exiting voeg_toe function
+2024-12-06 00:30:58,825 - INFO - Exiting voeg_toe function
+2024-12-06 00:31:00,392 - INFO - User pressed Ctrl+S, attempting to save record
+2024-12-06 00:31:00,392 - INFO - Validating record
+2024-12-06 00:31:00,392 - WARNING - Empty field: auteur
+2024-12-06 00:31:02,772 - INFO - Exiting voeg_toe function
+2024-12-06 00:31:04,334 - INFO - User pressed ESC, exiting voeg_toe
+2024-12-06 00:31:09,393 - INFO - file_cache is only supported with oauth2client<4.0.0
+2024-12-06 00:31:09,668 - DEBUG - URL being requested: POST https://gmail.googleapis.com/gmail/v1/users/me/messages/send?alt=json
+2024-12-06 00:38:38,245 - INFO - file_cache is only supported with oauth2client<4.0.0
+2024-12-06 00:38:38,536 - DEBUG - URL being requested: POST https://gmail.googleapis.com/gmail/v1/users/me/messages/send?alt=json
+2024-12-06 00:39:26,528 - INFO - file_cache is only supported with oauth2client<4.0.0
+2024-12-06 00:39:26,720 - DEBUG - URL being requested: POST https://gmail.googleapis.com/gmail/v1/users/me/messages/send?alt=json
+2024-12-06 00:39:51,900 - INFO - file_cache is only supported with oauth2client<4.0.0
+2024-12-06 00:39:52,076 - DEBUG - URL being requested: POST https://gmail.googleapis.com/gmail/v1/users/me/messages/send?alt=json
+2024-12-06 00:40:23,987 - INFO - file_cache is only supported with oauth2client<4.0.0
+2024-12-06 00:40:24,159 - DEBUG - URL being requested: POST https://gmail.googleapis.com/gmail/v1/users/me/messages/send?alt=json
+2024-12-06 00:42:13,245 - INFO - file_cache is only supported with oauth2client<4.0.0
+2024-12-06 00:42:13,452 - DEBUG - URL being requested: POST https://gmail.googleapis.com/gmail/v1/users/me/messages/send?alt=json
