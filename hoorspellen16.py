@@ -656,11 +656,7 @@ def display_search_results(conn, term, results, search_term, offset, limit):
 def edit_field(conn, term, results, current_record, current_attribute, search_term, offset, limit):
     clear_screen(term)
     field_name = valid_fields[current_attribute]
-    current_value = results[current_record][current_attribute]
-
-    print(f"Bewerk {field_name}", end='', flush=True)
-    print(f"Huidige waarde: {current_value}", end='', flush=True)
-    print("Nieuwe waarde:", end='', flush=True)
+    print(f"-> Bewerk {field_name}: ", end='', flush=True)
 
     new_value = ''
     while True:
@@ -685,30 +681,31 @@ def edit_field(conn, term, results, current_record, current_attribute, search_te
             print(key, end='', flush=True)
 
     if new_value == '':
-        new_value = current_value
+        return
 
-    if new_value != current_value:
-        try:
-            with conn:
-                with conn.cursor() as cursor:
-                    # Gebruik SELECT ... FOR UPDATE om het record te vergrendelen
-                    cursor.execute("SELECT * FROM hoorspelen WHERE id = %s FOR UPDATE", (results[current_record][0],))
-                    entry = cursor.fetchone()
-                    if not entry:
-                        print("Record niet gevonden of gewijzigd door een andere gebruiker.", end='', flush=True)
-                        term.inkey()
-                        return
-                    update_query = sql.SQL("UPDATE hoorspelen SET {} = %s, last_modified = CURRENT_TIMESTAMP WHERE id = %s").format(sql.Identifier(field_name))
-                    cursor.execute(update_query, (new_value, results[current_record][0]))
-            print("\nRecord succesvol bijgewerkt.", end='', flush=True)
-            # Update the value in the results
-            results[current_record] = list(results[current_record])
-            results[current_record][current_attribute] = new_value
-        except Exception as e:
-            print(f"\nFout bij het bijwerken van het record: {e}")
+    try:
+        with conn:
+            with conn.cursor() as cursor:
+                cursor.execute("SELECT * FROM hoorspelen WHERE id = %s FOR UPDATE", (results[current_record][0],))
+                entry = cursor.fetchone()
+                if not entry:
+                    print(term.home + term.clear + "-> Record niet gevonden.", end='', flush=True)
+                    term.inkey()
+                    return
 
-    print("Druk op een toets om verder te gaan...", end='', flush=True)
-    term.inkey()
+                update_query = sql.SQL(
+                    "UPDATE hoorspelen SET {} = %s, last_modified = CURRENT_TIMESTAMP WHERE id = %s"
+                ).format(sql.Identifier(field_name))
+                cursor.execute(update_query, (new_value, results[current_record][0]))
+        
+        results[current_record] = list(results[current_record])
+        results[current_record][current_attribute] = new_value
+        print(term.home + term.clear + "-> Wijziging opgeslagen. Druk op een toets.", end='', flush=True)
+        term.inkey()
+        
+    except Exception as e:
+        print(term.home + term.clear + f"-> Fout: {e}. Druk op een toets.", end='', flush=True)
+        term.inkey()
 
 def toon_totaal_hoorspellen(conn, term):
     try:
