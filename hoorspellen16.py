@@ -36,7 +36,7 @@ def get_db_connection():
         dbname='hoorspellen',
         user='hoorspellen',
         password='1337Hoorspellen!@',
-        host='192.168.88.49',
+        host='100.10.10.171',
         port='5432',
         # Stel het isolatieniveau in indien nodig
         # isolation_level=psycopg2.extensions.ISOLATION_LEVEL_READ_COMMITTED
@@ -185,35 +185,54 @@ def import_function(conn, term):
             with conn:
                 with conn.cursor() as cursor:
                     for row in reader:
-                        print(f"Importing row: {row}")  # Debugging statement
-                        data_to_insert = row[1:]
-                        print(f"Data to insert: {data_to_insert}")  # Debugging statement
+                        # Debugging statements
+                        print(f"Importing row: {row}")
+                        
+                        # Verwijder NUL-characters uit elk veld
+                        cleaned_row = [col.replace('\x00', '') for col in row]
+
+                        # Het eerste veld (bijv. ID) wordt overgeslagen bij insert volgens jouw code
+                        data_to_insert = cleaned_row[1:]
+                        print(f"Data to insert: {data_to_insert}")
+                        
                         cursor.execute('''
                             INSERT INTO hoorspelen (auteur, titel, regie, datum, omroep, bandnr, vertaling, duur, bewerking, genre, productie, themareeks, delen, bijzverm, taal)
                             VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
                         ''', data_to_insert)
+
             clear_screen(term)
         input("Importeren gelukt. Druk op Enter om verder te gaan...")
+
     except Exception as e:
         input(f"Er is een fout opgetreden: {e}. Druk op Enter om verder te gaan...")
 
+
 def export_function(conn, term):
+    # Definieer hier de map waar de bestanden moeten komen, bijvoorbeeld:
+    base_directory = r"c:\hoorspellen"
+    # Zorg ervoor dat deze directory bestaat:
+    if not os.path.exists(base_directory):
+        os.makedirs(base_directory)
+
     timestamp = datetime.datetime.now().strftime("%d-%m-%Y_%H-%M-%S")
     filename = f"hoorspellendb_{timestamp}.csv"
+    filepath = os.path.join(base_directory, filename)  # Combineren tot volledig pad
+
     try:
-        with open(filename, 'w', newline='', encoding='utf-8') as csvfile:
+        with open(filepath, 'w', newline='', encoding='utf-8') as csvfile:
             with conn.cursor() as cursor:
                 cursor.execute("SELECT * FROM hoorspelen")
                 writer = csv.writer(csvfile)
-                writer.writerow([desc[0] for desc in cursor.description])  # Write headers
+                writer.writerow([desc[0] for desc in cursor.description])  # headers
                 writer.writerows(cursor.fetchall())
         clear_screen(term)
-        print(f"Exporteren gelukt. Bestand opgeslagen als: {filename}", end='', flush=True)
-        return filename
+        print(f"Exporteren gelukt. Bestand opgeslagen als: {filepath}", end='', flush=True)
+        return filepath
     except Exception as e:
         print(f"Er is een fout opgetreden: {e}", end='', flush=True)
         logging.error(f"Error during export: {e}")
         return None
+
 
 def clear_db_function(conn, term):
     clear_screen(term)
@@ -358,7 +377,7 @@ def voeg_toe(conn, term):
                             cursor.execute(query, record_values)
                             new_id = cursor.fetchone()[0]
                     logging.info(f"Record successfully added to database with ID {new_id}")
-                    print(term.home + term.clear + "-> Record toegevoegd. Druk op een toets om verder te gaan.", end='', flush=True)
+                    print(term.home + term.clear + "-> Record toegevoegd. Druk op een toets.", end='', flush=True)
                     term.inkey()
                     return
                 except Exception as e:
@@ -399,7 +418,7 @@ def bewerk_hoorspel(conn, term):
 
                 if entry:
                     fields = ['auteur', 'titel', 'regie', 'datum', 'omroep', 'bandnr', 'vertaling', 'duur',
-                              'bewerking', 'genre', 'productie', 'themareeks', 'delen', 'bijzverm', 'taal']
+                            'bewerking', 'genre', 'productie', 'themareeks', 'delen', 'bijzverm', 'taal']
                     current_field = 0
                     record = {field: entry[i+1] if entry[i+1] is not None else '' for i, field in enumerate(fields)}
                     error_message = ""
@@ -454,7 +473,7 @@ def bewerk_hoorspel(conn, term):
                                     placeholders = ', '.join([f"{field} = %s" for field in fields])
                                     query = f"UPDATE hoorspelen SET {placeholders}, last_modified = CURRENT_TIMESTAMP WHERE id = %s"
                                     cursor.execute(query, [record[field] for field in fields] + [entry_id])
-                                    print(term.clear + "Record succesvol bijgewerkt. Druk op een toets om verder te gaan.")
+                                    print(term.clear + "Record succesvol bijgewerkt. Druk op een toets.")
                                     term.inkey()
                                     return
                                 except Exception as e:
@@ -518,7 +537,7 @@ def zoek_hoorspellen(conn, term):
     try:
         while True:
             clear_screen()
-            print("Voer zoekterm in of veld:zoekwoord (ESC om terug te gaan): ", end='', flush=True)
+            print("Zoekterm: ", end='', flush=True)
             search_term = ''
             specific_field = None
 
@@ -641,7 +660,7 @@ def edit_field(conn, term, results, current_record, current_attribute, search_te
 
     print(f"Bewerk {field_name}", end='', flush=True)
     print(f"Huidige waarde: {current_value}", end='', flush=True)
-    print("Voer nieuwe waarde in (Enter om te bewaren, ESC om te annuleren):", end='', flush=True)
+    print("Nieuwe waarde:", end='', flush=True)
 
     new_value = ''
     while True:
@@ -863,8 +882,8 @@ def gmail_service():
     service = None
 
     # Zorg ervoor dat de token.pickle en credentials bestandslocaties correct zijn
-    token_path = 'token.pickle'
-    credentials_path = "client_secret_909008488627-c1gda8u30p8ssck0rsrcrs46p88mimb2.apps.googleusercontent.com.json"
+    token_path = r'c:\hoorspellen\token.pickle'
+    credentials_path = r'c:\hoorspellen\client_secret_909008488627-c1gda8u30p8ssck0rsrcrs46p88mimb2.apps.googleusercontent.com.json'
 
     if os.path.exists(token_path):
         with open(token_path, 'rb') as token:
@@ -894,10 +913,39 @@ def gmail_service():
 
     return service
 
+def export_and_email_backup(service, conn, email_address):
+    logging.info("-> Start export_and_email_backup functie.")
+    print("-> Start export_and_email_backup functie.")
+    csv_path = export_function(conn, term)
+    if csv_path:
+        logging.info(f"-> Export succesvol: {csv_path}")
+        print(f"-> Export succesvol: {csv_path}")
+        sender = "me"
+        to = email_address
+        subject = "Database Backup"
+        message_text = "Attached is the database backup."
+        logging.info("-> Creëer bericht met bijlage...")
+        print("-> Creëer bericht met bijlage...")
+        message = create_message_with_attachment(sender, to, subject, message_text, csv_path)
+        logging.info("-> Bericht gecreëerd, nu versturen via Gmail API...")
+        print("-> Bericht gecreëerd, nu versturen via Gmail API...")
+        send_message(service, "me", message)
+        logging.info("-> Bericht versturen functie afgerond, controleer logs/mailbox.")
+        print("-> Bericht versturen functie afgerond, controleer logs/mailbox.")
+    else:
+        logging.warning("-> Export mislukt. Email niet verzonden.")
+        print("-> Export mislukt. Email niet verzonden.")
+    logging.info("-> export_and_email_backup functie klaar.")
+    print("-> export_and_email_backup functie klaar. Druk op Enter om verder te gaan...")
+    input()
+
+
 def create_message_with_attachment(sender, to, subject, message_text, csv_path):
-    """
-    Create a message for an email with an attachment.
-    """
+    logging.info("-> create_message_with_attachment aangeroepen.")
+    logging.info(f"   Sender: {sender}, To: {to}, Subject: {subject}, Attachment: {csv_path}")
+    print("-> create_message_with_attachment aangeroepen.")
+    print(f"   Sender: {sender}, To: {to}, Subject: {subject}, Attachment: {csv_path}")
+
     message = MIMEMultipart()
     message['to'] = to
     message['from'] = sender
@@ -910,37 +958,49 @@ def create_message_with_attachment(sender, to, subject, message_text, csv_path):
     if content_type is None or encoding is not None:
         content_type = 'application/octet-stream'
     main_type, sub_type = content_type.split('/', 1)
-    with open(csv_path, 'rb') as fp:
-        msg = MIMEBase(main_type, sub_type)
-        msg.set_payload(fp.read())
-        encoders.encode_base64(msg)
 
-    msg.add_header('Content-Disposition', 'attachment', filename=os.path.basename(csv_path))
-    message.attach(msg)
+    logging.info(f"-> Attachment content_type: {content_type}")
+    print(f"-> Attachment content_type: {content_type}")
 
-    return {'raw': base64.urlsafe_b64encode(message.as_bytes()).decode()}
+    try:
+        with open(csv_path, 'rb') as fp:
+            attach_msg = MIMEBase(main_type, sub_type)
+            attach_msg.set_payload(fp.read())
+            encoders.encode_base64(attach_msg)
+
+        attach_msg.add_header('Content-Disposition', 'attachment', filename=os.path.basename(csv_path))
+        message.attach(attach_msg)
+        logging.info("-> Bijlage toegevoegd aan bericht.")
+        print("-> Bijlage toegevoegd aan bericht.")
+    except Exception as e:
+        logging.error(f"Fout bij het lezen van de bijlage: {e}")
+        print(f"Fout bij het lezen van de bijlage: {e}")
+
+    raw_message = {'raw': base64.urlsafe_b64encode(message.as_bytes()).decode()}
+    logging.info("-> raw_message object aangemaakt.")
+    print("-> raw_message object aangemaakt.")
+    return raw_message
+
 
 def send_message(service, user_id, message):
-    """
-    Send an email message.
-    """
+    logging.info("-> send_message aangeroepen.")
+    print("-> send_message aangeroepen.")
+    logging.info("-> Proberen e-mail te versturen via Gmail API...")
+    print("-> Proberen e-mail te versturen via Gmail API...")
     try:
-        message = service.users().messages().send(userId=user_id, body=message).execute()
-        print('Message Id: %s' % message['id'])
+        response = service.users().messages().send(userId=user_id, body=message).execute()
+        logging.info(f"Message Id: {response['id']}")
+        print(f"Message Id: {response['id']}")
     except HttpError as error:
-        print(f'An error occurred: {error}', end='', flush=True)
+        logging.error(f'An error occurred: {error}')
+        print(f'An error occurred: {error}')
+    except Exception as e:
+        logging.error(f"Onverwachte fout tijdens verzenden van mail: {e}")
+        print(f"Onverwachte fout tijdens verzenden van mail: {e}")
+    logging.info("-> send_message functie klaar.")
+    print("-> send_message functie klaar.")
 
-def export_and_email_backup(service, conn, email_address):
-    csv_path = export_function(conn, term)
-    if csv_path:
-        sender = "me"
-        to = email_address  # Zorg ervoor dat dit het e-mailadres van de ontvanger is
-        subject = "Database Backup"
-        message_text = "Attached is the database backup."
-        message = create_message_with_attachment(sender, to, subject, message_text, csv_path)
-        send_message(service, "me", message)
-    else:
-        print("Export mislukt. Email niet verzonden.", end='', flush=True)
+
 
 if __name__ == "__main__":
     term = blessed.Terminal()
