@@ -700,8 +700,7 @@ def edit_field(conn, term, results, current_record, current_attribute, search_te
         
         results[current_record] = list(results[current_record])
         results[current_record][current_attribute] = new_value
-        print(term.home + term.clear + "-> Wijziging opgeslagen. Druk op een toets.", end='', flush=True)
-        term.inkey()
+        return  # Simply return to the record view
         
     except Exception as e:
         print(term.home + term.clear + f"-> Fout: {e}. Druk op een toets.", end='', flush=True)
