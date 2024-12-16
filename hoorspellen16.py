@@ -334,7 +334,7 @@ def voeg_toe(conn, term):
         elif key.name == 'KEY_ENTER':
             # Clear screen and show input prompt on same line as cursor
             print(term.home + term.clear, end='')
-            print(f"-> Voer waarde in voor {fields[current_field]}: ", end='', flush=True)
+            print(f"-> {fields[current_field]}: ", end='', flush=True)
             
             value = ''
             while True:
