@@ -646,9 +646,7 @@ def display_search_results(conn, term, results, search_term, offset, limit):
             # current_attribute remains the same
         elif key.lower() == 'e':
             if valid_fields[current_attribute] != "id":
-                edit_field(conn, term, results, current_record, current_attribute, search_term, offset, limit)
-                # Refresh results after editing
-                results = execute_search(conn, search_term, offset, limit)
+                current_record = edit_field(conn, term, results, current_record, current_attribute, search_term, offset, limit)
         elif key.name == 'KEY_ENTER':
             # Optional: Handle Enter key if needed
             pass
@@ -667,7 +665,7 @@ def edit_field(conn, term, results, current_record, current_attribute, search_te
             continue
 
         if key.name == 'KEY_ESCAPE':
-            return
+            return current_record  # Return the current record index
         elif key.name == 'KEY_ENTER':
             break
         elif key.name == 'KEY_BACKSPACE':
@@ -681,7 +679,7 @@ def edit_field(conn, term, results, current_record, current_attribute, search_te
             print(key, end='', flush=True)
 
     if new_value == '':
-        return
+        return current_record  # Return the current record index
 
     try:
         with conn:
@@ -691,7 +689,7 @@ def edit_field(conn, term, results, current_record, current_attribute, search_te
                 if not entry:
                     print(term.home + term.clear + "-> Record niet gevonden.", end='', flush=True)
                     term.inkey()
-                    return
+                    return current_record  # Return the current record index
 
                 update_query = sql.SQL(
                     "UPDATE hoorspelen SET {} = %s, last_modified = CURRENT_TIMESTAMP WHERE id = %s"
@@ -700,11 +698,12 @@ def edit_field(conn, term, results, current_record, current_attribute, search_te
         
         results[current_record] = list(results[current_record])
         results[current_record][current_attribute] = new_value
-        return  # Simply return to the record view
+        return current_record  # Return the current record index
         
     except Exception as e:
         print(term.home + term.clear + f"-> Fout: {e}. Druk op een toets.", end='', flush=True)
         term.inkey()
+        return current_record  # Return the current record index
 
 def toon_totaal_hoorspellen(conn, term):
     try:
