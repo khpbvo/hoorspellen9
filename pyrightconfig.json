@@ -1,0 +1,4 @@
+{
+  "include": ["hoorspellen16.py"],
+  "strict": ["hoorspellen16.py"]
+}

@@ -1,27 +1,35 @@
 import psycopg2
 from psycopg2 import sql
-import blessed
+from psycopg2.extensions import connection as PGConnection
+from psycopg2.extensions import cursor as PGCursor
+from blessed import Terminal
 import csv
 import datetime
 import certifi
-from google_auth_oauthlib.flow import InstalledAppFlow
-from googleapiclient.discovery import build
-from googleapiclient.errors import HttpError
+from google_auth_oauthlib.flow import InstalledAppFlow  # type: ignore[reportMissingTypeStubs]
+from googleapiclient.discovery import build  # type: ignore[reportMissingTypeStubs]
+from googleapiclient.errors import HttpError  # type: ignore[reportMissingTypeStubs]
 from email.mime.text import MIMEText
 import base64
 import os
 from email.mime.multipart import MIMEMultipart
 from email.mime.base import MIMEBase
 from email import encoders
-from google.auth.transport.requests import Request
+from google.auth.transport.requests import Request  # type: ignore[reportMissingTypeStubs]
 import pickle
 import os.path
 import mimetypes
 import logging
 import re
-from typing import Optional
+from typing import Any, Callable, Optional, Tuple, cast
 
 os.environ["SSL_CERT_FILE"] = certifi.where()
+
+
+Connection = PGConnection
+Cursor = PGCursor
+MenuAction = Callable[[], object | None]
+MenuOption = Tuple[str, Optional[MenuAction]]
 
 
 def wait_for_enter(message: str) -> None:
@@ -38,7 +46,7 @@ logging.basicConfig(
 
 
 # Database verbinding details
-def get_db_connection():
+def get_db_connection() -> Connection:
     return psycopg2.connect(
         dbname="hoorspellen",
         user="hoorspellen",
@@ -50,7 +58,7 @@ def get_db_connection():
     )
 
 
-def initialize_db(conn):
+def initialize_db(conn: Connection) -> None:
     with conn.cursor() as cursor:
         cursor.execute(
             """
@@ -78,8 +86,8 @@ def initialize_db(conn):
     conn.commit()
 
 
-def geavanceerd_submenu(conn, term):
-    options = [
+def geavanceerd_submenu(conn: Connection, term: Terminal) -> None:
+    options: list[MenuOption] = [
         ("Importeren", lambda: import_function(conn, term)),
         ("Exporteren", lambda: export_function(conn, term)),
         ("DB Legen", lambda: clear_db_function(conn, term)),
@@ -100,7 +108,7 @@ def geavanceerd_submenu(conn, term):
 
         # Wacht op toetsdruk
         with term.cbreak():
-            key = term.inkey()
+            key: Any = term.inkey()
 
         if key.name == "KEY_UP":
             current_option = (current_option - 1) % len(options)
@@ -110,13 +118,15 @@ def geavanceerd_submenu(conn, term):
             if options[current_option][1] is None:
                 break
             else:
-                options[current_option][1]()
+                callback = options[current_option][1]
+                if callback is not None:
+                    callback()
         elif key.name == "KEY_ESCAPE":
             break
 
 
-def main_menu(conn, term):
-    options = [
+def main_menu(conn: Connection, term: Terminal) -> None:
+    options: list[str] = [
         "Voeg Toe",
         "Bewerk Hoorspellen",
         "Zoek Hoorspellen",
@@ -140,7 +150,7 @@ def main_menu(conn, term):
 
         # Wacht op toetsdruk
         with term.cbreak():
-            key = term.inkey()
+            key: Any = term.inkey()
 
         if key.name == "KEY_UP":
             current_option = (current_option - 1) % len(options)
@@ -153,18 +163,23 @@ def main_menu(conn, term):
                     end="",
                     flush=True,
                 )
+                csv_result = export_function(conn, term)
+                if csv_result is None:
+                    wait_for_enter("Export mislukt. Kan geen backup versturen.")
+                    continue
                 email_message = create_message_with_attachment(
                     "sjefsdatabasebackups@gmail.com",
                     "sjefsdatabasebackups@gmail.com",
                     "Hoorspelen backup",
                     "De backup van de hoorspelen",
-                    csv_path=export_function(conn, term),
+                    csv_path=csv_result,
                 )
                 service = gmail_service()
-                send_message(service, "me", email_message)
+                if service is not None:
+                    send_message(service, "me", email_message)
                 return
             else:
-                function_map = {
+                function_map: dict[str, Callable[[], None]] = {
                     "Voeg Toe": lambda: voeg_toe(conn, term),
                     "Bewerk Hoorspellen": lambda: bewerk_hoorspel(conn, term),
                     "Zoek Hoorspellen": lambda: zoek_hoorspellen(conn, term),
@@ -173,7 +188,7 @@ def main_menu(conn, term):
                     "Geavanceerd": lambda: geavanceerd_submenu(conn, term),
                 }
                 selected_function = function_map.get(options[current_option])
-                if selected_function:
+                if selected_function is not None:
                     selected_function()
         elif key.name == "KEY_ESCAPE":
             print(
@@ -181,19 +196,24 @@ def main_menu(conn, term):
                 end="",
                 flush=True,
             )
-            email_message = create_message_with_attachment(
-                "sjefsdatabasebackups@gmail.com",
-                "sjefsdatabasebackups@gmail.com",
-                "Hoorspelen backup",
-                "De backup van de hoorspelen",
-                csv_path=export_function(conn, term),
-            )
-            service = gmail_service()
-            send_message(service, "me", email_message)
+            csv_result = export_function(conn, term)
+            if csv_result is not None:
+                email_message = create_message_with_attachment(
+                    "sjefsdatabasebackups@gmail.com",
+                    "sjefsdatabasebackups@gmail.com",
+                    "Hoorspelen backup",
+                    "De backup van de hoorspelen",
+                    csv_path=csv_result,
+                )
+                service = gmail_service()
+                if service is not None:
+                    send_message(service, "me", email_message)
+            else:
+                wait_for_enter("Export mislukt. Kan geen backup versturen.")
             return
 
 
-def import_function(conn, term):
+def import_function(conn: Connection, term: Terminal) -> None:
     clear_screen(term)
     filename = get_input(term, "Voer het pad naar het CSV-bestand in: ")
     if filename is None:
@@ -231,7 +251,7 @@ def import_function(conn, term):
         input(f"Er is een fout opgetreden: {e}. Druk op Enter om verder te gaan...")
 
 
-def export_function(conn, term):
+def export_function(conn: Connection, term: Terminal) -> Optional[str]:
     # Definieer hier de map waar de bestanden moeten komen, bijvoorbeeld:
     base_directory = r"c:\hoorspellen"
     # Zorg ervoor dat deze directory bestaat:
@@ -247,7 +267,10 @@ def export_function(conn, term):
             with conn.cursor() as cursor:
                 cursor.execute("SELECT * FROM hoorspelen")
                 writer = csv.writer(csvfile)
-                writer.writerow([desc[0] for desc in cursor.description])  # headers
+                description = cursor.description
+                if description is None:
+                    raise ValueError("Geen kolomdefinitie beschikbaar voor export.")
+                writer.writerow([desc[0] for desc in description])  # headers
                 writer.writerows(cursor.fetchall())
         clear_screen(term)
         print(
@@ -260,7 +283,7 @@ def export_function(conn, term):
         return None
 
 
-def clear_db_function(conn, term):
+def clear_db_function(conn: Connection, term: Terminal) -> None:
     clear_screen(term)
     confirm = get_input(
         term,
@@ -283,7 +306,7 @@ def clear_db_function(conn, term):
         wait_for_enter("Wissen geannuleerd. Druk op Enter om verder te gaan...")
 
 
-def validate_date(date_string):
+def validate_date(date_string: str) -> bool:
     try:
         datetime.datetime.strptime(date_string, "%Y/%m/%d")  # Validate date format
         return True
@@ -291,12 +314,12 @@ def validate_date(date_string):
         return False
 
 
-def get_input(term, prompt: str) -> Optional[str]:
+def get_input(term: Terminal, prompt: str) -> Optional[str]:
     print(prompt, end="", flush=True)
     value = ""
     while True:
         with term.cbreak():
-            key = term.inkey()
+            key: Any = term.inkey()
         if key.name == "KEY_ENTER":
             print()  # Move to the next line
             break
@@ -313,11 +336,11 @@ def get_input(term, prompt: str) -> Optional[str]:
     return value
 
 
-def clear_screen(term):
+def clear_screen(term: Terminal) -> None:
     print(term.home + term.clear, end="", flush=True)
 
 
-def voeg_toe(conn, term):
+def voeg_toe(conn: Connection, term: Terminal) -> None:
     logging.info("Starting voeg_toe function")
 
     fields = [
@@ -375,7 +398,7 @@ def voeg_toe(conn, term):
         display_form()
 
         with term.cbreak():
-            key = term.inkey()
+            key: Any = term.inkey()
 
         if key.name == "KEY_ESCAPE":
             logging.info("User pressed ESC, exiting voeg_toe")
@@ -394,7 +417,7 @@ def voeg_toe(conn, term):
             value = ""
             while True:
                 with term.cbreak():
-                    input_key = term.inkey()
+                    input_key: Any = term.inkey()
 
                 if input_key.name == "KEY_ENTER":
                     record[fields[current_field]] = value
@@ -424,7 +447,7 @@ def voeg_toe(conn, term):
                 # Wait for Enter key
                 while True:
                     with term.cbreak():
-                        key = term.inkey()
+                        key: Any = term.inkey()
                         if key.name == "KEY_ENTER":
                             break
                 error_message = ""  # Clear error message after user acknowledgment
@@ -436,7 +459,10 @@ def voeg_toe(conn, term):
                     with conn:
                         with conn.cursor() as cursor:
                             cursor.execute(query, record_values)
-                            new_id = cursor.fetchone()[0]
+                            result = cursor.fetchone()
+                            if result is None:
+                                raise ValueError("Kan nieuw ID niet ophalen na insert.")
+                            new_id = result[0]
                     logging.info(
                         f"Record successfully added to database with ID {new_id}"
                     )
@@ -456,7 +482,7 @@ def voeg_toe(conn, term):
         logging.info("Exiting voeg_toe function")
 
 
-def is_valid_datum_format(datum):
+def is_valid_datum_format(datum: str) -> bool:
     if not re.match(r"^\d{4}/\d{2}/\d{2}$", datum):
         return False
     try:
@@ -467,7 +493,7 @@ def is_valid_datum_format(datum):
         return False
 
 
-def bewerk_hoorspel(conn, term):
+def bewerk_hoorspel(conn: Connection, term: Terminal) -> None:
     clear_screen(term)
     entry_id = get_input(term, "Voer de ID in van de inzending die je wilt bewerken: ")
     if entry_id is None:
@@ -541,7 +567,7 @@ def bewerk_hoorspel(conn, term):
                         display_form()
 
                         with term.cbreak():
-                            key = term.inkey()
+                            key: Any = term.inkey()
 
                         if key.name == "KEY_ESCAPE":
                             return
@@ -608,7 +634,13 @@ valid_fields = [
 ]
 
 
-def execute_search(conn, search_term, offset, limit, specific_field=None):
+def execute_search(
+    conn: Connection,
+    search_term: str,
+    offset: int,
+    limit: int,
+    specific_field: Optional[str] = None,
+) -> list[tuple[Any, ...]]:
     try:
         with conn.cursor() as cursor:
             # If a specific field is provided
@@ -628,8 +660,8 @@ def execute_search(conn, search_term, offset, limit, specific_field=None):
                     ).format(sql.Identifier(specific_field))
                     cursor.execute(query, (f"%{search_term}%", limit, offset))
             else:
-                conditions = []
-                params = []
+                conditions: list[Any] = []
+                params: list[Any] = []
 
                 for field in valid_fields:
                     if field != "id":
@@ -656,7 +688,7 @@ def execute_search(conn, search_term, offset, limit, specific_field=None):
         raise
 
 
-def zoek_hoorspellen(conn, term):
+def zoek_hoorspellen(conn: Connection, term: Terminal) -> None:
     def clear_screen():
         print(term.home + term.clear, end="", flush=True)
 
@@ -669,7 +701,7 @@ def zoek_hoorspellen(conn, term):
 
             while True:
                 with term.cbreak():
-                    key = term.inkey(timeout=1)
+                    key: Any = term.inkey(timeout=1)
 
                 if not key:
                     continue
@@ -725,7 +757,14 @@ def zoek_hoorspellen(conn, term):
         term.inkey()
 
 
-def display_search_results(conn, term, results, search_term, offset, limit):
+def display_search_results(
+    conn: Connection,
+    term: Terminal,
+    results: list[tuple[Any, ...]],
+    search_term: str,
+    offset: int,
+    limit: int,
+) -> None:
     current_record = 0
     current_attribute = 0
 
@@ -751,7 +790,7 @@ def display_search_results(conn, term, results, search_term, offset, limit):
 
         # Wait for user input
         with term.cbreak():
-            key = term.inkey()
+            key: Any = term.inkey()
 
         if not key:
             continue
@@ -793,8 +832,15 @@ def display_search_results(conn, term, results, search_term, offset, limit):
 
 
 def edit_field(
-    conn, term, results, current_record, current_attribute, search_term, offset, limit
-):
+    conn: Connection,
+    term: Terminal,
+    results: list[tuple[Any, ...]],
+    current_record: int,
+    current_attribute: int,
+    search_term: str,
+    offset: int,
+    limit: int,
+) -> int:
     clear_screen(term)
     field_name = valid_fields[current_attribute]
     print(f"-> Bewerk {field_name}: ", end="", flush=True)
@@ -802,7 +848,7 @@ def edit_field(
     new_value = ""
     while True:
         with term.cbreak():
-            key = term.inkey()
+            key: Any = term.inkey()
 
         if not key:
             continue
@@ -846,8 +892,9 @@ def edit_field(
                 ).format(sql.Identifier(field_name))
                 cursor.execute(update_query, (new_value, results[current_record][0]))
 
-        results[current_record] = list(results[current_record])
-        results[current_record][current_attribute] = new_value
+        updated_record = list(results[current_record])
+        updated_record[current_attribute] = new_value
+        results[current_record] = tuple(updated_record)
         return current_record  # Return the current record index
 
     except Exception as e:
@@ -860,11 +907,14 @@ def edit_field(
         return current_record  # Return the current record index
 
 
-def toon_totaal_hoorspellen(conn, term):
+def toon_totaal_hoorspellen(conn: Connection, term: Terminal) -> None:
     try:
         with conn.cursor() as cursor:
             cursor.execute("SELECT COUNT(*) FROM hoorspelen")
-            total = cursor.fetchone()[0]
+            result = cursor.fetchone()
+            if result is None:
+                raise ValueError("Kan totaal aantal hoorspellen niet bepalen.")
+            total = int(result[0])
         # Display message and wait for keypress
         clear_screen(term)
         message = f"Totaal aantal hoorspellen: {total}. Druk op een toets om verder te gaan..."
@@ -877,13 +927,13 @@ def toon_totaal_hoorspellen(conn, term):
         )
 
 
-def pause(term, message):
+def pause(term: Terminal, message: str) -> None:
     print(message, end="", flush=True)
     with term.cbreak():
         term.inkey()
 
 
-def geschiedenis(conn, term):
+def geschiedenis(conn: Connection, term: Terminal) -> None:
     try:
         with conn.cursor() as cursor:
             cursor.execute("SELECT * FROM hoorspelen ORDER BY id DESC LIMIT 10")
@@ -918,12 +968,12 @@ def geschiedenis(conn, term):
                 # Cursor naar de regel van het huidige attribuut verplaatsen
                 print(term.move_xy(0, current_attribute), end="", flush=True)
 
-        def get_input_with_escape(prompt):
+        def get_input_with_escape(prompt: str) -> Optional[str]:
             print(prompt, end="", flush=True)
-            buffer = []
+            buffer: list[str] = []
             while True:
                 with term.cbreak():
-                    key = term.inkey()
+                    key: Any = term.inkey()
                 if key.name == "KEY_ESCAPE":
                     return None
                 elif key.name == "KEY_ENTER":
@@ -933,17 +983,18 @@ def geschiedenis(conn, term):
                     if buffer:
                         buffer.pop()
                         print("\b \b", end="", flush=True)
-                elif key.is_sequence:
+                elif getattr(key, "is_sequence", False):
                     continue
                 else:
-                    buffer.append(key)
-                    print(key, end="", flush=True)
+                    text = str(key)
+                    buffer.append(text)
+                    print(text, end="", flush=True)
 
         while True:
             display_record()
 
             with term.cbreak():
-                key = term.inkey()
+                key: Any = term.inkey()
 
             if key.name == "KEY_ESCAPE":
                 break
@@ -1036,8 +1087,9 @@ def geschiedenis(conn, term):
                                         update_query,
                                         (new_value, results[current_record][0]),
                                     )
-                            results[current_record] = list(results[current_record])
-                            results[current_record][current_attribute] = new_value
+                            updated_results = list(results[current_record])
+                            updated_results[current_attribute] = new_value
+                            results[current_record] = tuple(updated_results)
                             print("Record succesvol bijgewerkt.", end="", flush=True)
                         except Exception as e:
                             print(
@@ -1058,9 +1110,9 @@ def geschiedenis(conn, term):
 SCOPES = ["https://www.googleapis.com/auth/gmail.send"]
 
 
-def gmail_service():
-    creds = None
-    service = None
+def gmail_service() -> Optional[Any]:
+    creds: Optional[Any] = None
+    service: Optional[Any] = None
 
     # Zorg ervoor dat de token.pickle en credentials bestandslocaties correct zijn
     token_path = r"c:\hoorspellen\token.pickle"
@@ -1071,15 +1123,21 @@ def gmail_service():
             creds = pickle.load(token)
 
     # Controleer of de credentials verlopen of ontbreken
-    if not creds or not creds.valid:
-        if creds and creds.expired and creds.refresh_token:
-            creds.refresh(Request())
+    if not creds or not getattr(creds, "valid", False):
+        if (
+            creds
+            and getattr(creds, "expired", False)
+            and getattr(creds, "refresh_token", None)
+        ):
+            refresh_method = getattr(creds, "refresh", None)
+            if callable(refresh_method):
+                refresh_method(Request())
         else:
             if os.path.exists(credentials_path):
-                flow = InstalledAppFlow.from_client_secrets_file(
+                flow = InstalledAppFlow.from_client_secrets_file(  # type: ignore[reportUnknownMemberType]
                     credentials_path, SCOPES
                 )
-                creds = flow.run_local_server(port=0)
+                creds = flow.run_local_server(port=0)  # type: ignore[reportUnknownMemberType]
             else:
                 print(
                     f"Error: Kan de login gegevens niet vinden '{credentials_path}'.",
@@ -1093,15 +1151,20 @@ def gmail_service():
             pickle.dump(creds, token)
 
     if creds:
-        # Bouw de service na het verifiëren van de credentials
-        service = build("gmail", "v1", credentials=creds)
+        # Bouw de service nadat de credentials zijn geverifieerd
+        service = cast(Optional[Any], build("gmail", "v1", credentials=creds))  # type: ignore[reportUnknownMemberType]
     else:
         print("Geen valide login.", end="", flush=True)
 
     return service
 
 
-def export_and_email_backup(service, conn, email_address):
+def export_and_email_backup(
+    service: Any,
+    conn: Connection,
+    term: Terminal,
+    email_address: str,
+) -> None:
     logging.info("-> Start export_and_email_backup functie.")
     print("-> Start export_and_email_backup functie.")
     csv_path = export_function(conn, term)
@@ -1112,27 +1175,39 @@ def export_and_email_backup(service, conn, email_address):
         to = email_address
         subject = "Database Backup"
         message_text = "Attached is the database backup."
-        logging.info("-> Creëer bericht met bijlage...")
-        print("-> Creëer bericht met bijlage...")
+        logging.info("-> Creer bericht met bijlage...")
+        print("-> Creer bericht met bijlage...")
         message = create_message_with_attachment(
             sender, to, subject, message_text, csv_path
         )
-        logging.info("-> Bericht gecreëerd, nu versturen via Gmail API...")
-        print("-> Bericht gecreëerd, nu versturen via Gmail API...")
-        send_message(service, "me", message)
-        logging.info("-> Bericht versturen functie afgerond, controleer logs/mailbox.")
-        print("-> Bericht versturen functie afgerond, controleer logs/mailbox.")
+        logging.info("-> Bericht gemaakt, nu versturen via Gmail API...")
+        print("-> Bericht gemaakt, nu versturen via Gmail API...")
+        if service is None:
+            logging.warning(
+                "-> Geen geldige Gmail-service beschikbaar. Email niet verzonden."
+            )
+            print("-> Geen geldige Gmail-service beschikbaar. Email niet verzonden.")
+        else:
+            send_message(service, "me", message)
+            logging.info(
+                "-> Bericht versturen functie afgerond, controleer logs/mailbox."
+            )
+            print("-> Bericht versturen functie afgerond, controleer logs/mailbox.")
     else:
         logging.warning("-> Export mislukt. Email niet verzonden.")
         print("-> Export mislukt. Email niet verzonden.")
     logging.info("-> export_and_email_backup functie klaar.")
-    print(
+    wait_for_enter(
         "-> export_and_email_backup functie klaar. Druk op Enter om verder te gaan..."
     )
-    input()
 
-
-def create_message_with_attachment(sender, to, subject, message_text, csv_path):
+def create_message_with_attachment(
+    sender: str,
+    to: str,
+    subject: str,
+    message_text: str,
+    csv_path: str,
+) -> dict[str, str]:
     logging.info("-> create_message_with_attachment aangeroepen.")
     logging.info(
         f"   Sender: {sender}, To: {to}, Subject: {subject}, Attachment: {csv_path}"
@@ -1178,7 +1253,7 @@ def create_message_with_attachment(sender, to, subject, message_text, csv_path):
     return raw_message
 
 
-def send_message(service, user_id, message):
+def send_message(service: Any, user_id: str, message: dict[str, str]) -> None:
     logging.info("-> send_message aangeroepen.")
     print("-> send_message aangeroepen.")
     logging.info("-> Proberen e-mail te versturen via Gmail API...")
@@ -1200,7 +1275,7 @@ def send_message(service, user_id, message):
 
 
 if __name__ == "__main__":
-    term = blessed.Terminal()
+    term = Terminal()
     conn = get_db_connection()
     initialize_db(conn)
     main_menu(conn, term)
