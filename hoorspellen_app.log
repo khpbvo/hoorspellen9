@@ -340,3 +340,21 @@ HINT:  No operator matches the given name and argument types. You might need to 
 2024-12-06 00:40:24,159 - DEBUG - URL being requested: POST https://gmail.googleapis.com/gmail/v1/users/me/messages/send?alt=json
 2024-12-06 00:42:13,245 - INFO - file_cache is only supported with oauth2client<4.0.0
 2024-12-06 00:42:13,452 - DEBUG - URL being requested: POST https://gmail.googleapis.com/gmail/v1/users/me/messages/send?alt=json
+2025-09-20 11:59:59,882 - INFO - -> create_message_with_attachment aangeroepen.
+2025-09-20 11:59:59,891 - INFO -    Sender: sjefsdatabasebackups@gmail.com, To: sjefsdatabasebackups@gmail.com, Subject: Hoorspelen backup, Attachment: c:\hoorspellen\hoorspellendb_20-09-2025_11-59-58.csv
+2025-09-20 11:59:59,924 - INFO - -> Attachment content_type: application/vnd.ms-excel
+2025-09-20 12:00:00,417 - INFO - -> Bijlage toegevoegd aan bericht.
+2025-09-20 12:00:01,505 - INFO - -> raw_message object aangemaakt.
+2025-09-20 12:00:01,505 - INFO - -> send_message aangeroepen.
+2025-09-20 12:00:01,505 - INFO - -> Proberen e-mail te versturen via Gmail API...
+2025-09-20 12:00:01,505 - ERROR - Onverwachte fout tijdens verzenden van mail: 'NoneType' object has no attribute 'users'
+2025-09-20 12:00:01,505 - INFO - -> send_message functie klaar.
+2025-09-20 12:04:14,091 - INFO - -> create_message_with_attachment aangeroepen.
+2025-09-20 12:04:14,091 - INFO -    Sender: sjefsdatabasebackups@gmail.com, To: sjefsdatabasebackups@gmail.com, Subject: Hoorspelen backup, Attachment: c:\hoorspellen\hoorspellendb_20-09-2025_12-04-13.csv
+2025-09-20 12:04:14,132 - INFO - -> Attachment content_type: application/vnd.ms-excel
+2025-09-20 12:04:14,644 - INFO - -> Bijlage toegevoegd aan bericht.
+2025-09-20 12:04:15,818 - INFO - -> raw_message object aangemaakt.
+2025-09-20 12:04:15,818 - INFO - -> send_message aangeroepen.
+2025-09-20 12:04:15,818 - INFO - -> Proberen e-mail te versturen via Gmail API...
+2025-09-20 12:04:15,818 - ERROR - Onverwachte fout tijdens verzenden van mail: 'NoneType' object has no attribute 'users'
+2025-09-20 12:04:15,818 - INFO - -> send_message functie klaar.
