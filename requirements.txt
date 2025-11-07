@@ -1,0 +1,6 @@
+psycopg2-binary
+blessed
+certifi
+google-auth
+google-auth-oauthlib
+google-api-python-client

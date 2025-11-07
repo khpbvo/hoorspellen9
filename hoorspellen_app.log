@@ -358,3 +358,18 @@ HINT:  No operator matches the given name and argument types. You might need to 
 2025-09-20 12:04:15,818 - INFO - -> Proberen e-mail te versturen via Gmail API...
 2025-09-20 12:04:15,818 - ERROR - Onverwachte fout tijdens verzenden van mail: 'NoneType' object has no attribute 'users'
 2025-09-20 12:04:15,818 - INFO - -> send_message functie klaar.
+2025-11-07 07:34:07,639 - INFO - -> create_message_with_attachment aangeroepen.
+2025-11-07 07:34:07,662 - INFO -    Sender: sjefsdatabasebackups@gmail.com, To: sjefsdatabasebackups@gmail.com, Subject: Hoorspelen backup, Attachment: c:\hoorspellen\hoorspellendb_07-11-2025_07-34-05.csv
+2025-11-07 07:34:07,805 - INFO - -> Attachment content_type: text/csv
+2025-11-07 07:34:08,502 - INFO - -> Bijlage toegevoegd aan bericht.
+2025-11-07 07:34:11,313 - INFO - -> raw_message object aangemaakt.
+2025-11-07 07:35:33,726 - INFO - -> create_message_with_attachment aangeroepen.
+2025-11-07 07:35:33,729 - INFO -    Sender: sjefsdatabasebackups@gmail.com, To: sjefsdatabasebackups@gmail.com, Subject: Hoorspelen backup, Attachment: c:\hoorspellen\hoorspellendb_07-11-2025_07-35-30.csv
+2025-11-07 07:35:33,794 - INFO - -> Attachment content_type: text/csv
+2025-11-07 07:35:34,831 - INFO - -> Bijlage toegevoegd aan bericht.
+2025-11-07 07:36:43,875 - INFO - -> raw_message object aangemaakt.
+2025-11-07 07:37:58,949 - INFO - -> create_message_with_attachment aangeroepen.
+2025-11-07 07:37:58,957 - INFO -    Sender: sjefsdatabasebackups@gmail.com, To: sjefsdatabasebackups@gmail.com, Subject: Hoorspelen backup, Attachment: c:\hoorspellen\hoorspellendb_07-11-2025_07-37-54.csv
+2025-11-07 07:37:59,125 - INFO - -> Attachment content_type: text/csv
+2025-11-07 07:38:00,965 - INFO - -> Bijlage toegevoegd aan bericht.
+2025-11-07 07:38:31,896 - INFO - -> raw_message object aangemaakt.

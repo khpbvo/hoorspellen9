@@ -51,7 +51,7 @@ def get_db_connection() -> Connection:
         dbname="hoorspellen",
         user="hoorspellen",
         password="1337Hoorspellen!@",
-        host="192.168.2.19",
+        host="192.168.202.137",
         port="5432",
         # Stel het isolatieniveau in indien nodig
         # isolation_level=psycopg2.extensions.ISOLATION_LEVEL_READ_COMMITTED
@@ -82,6 +82,13 @@ def initialize_db(conn: Connection) -> None:
                 last_modified TIMESTAMP DEFAULT CURRENT_TIMESTAMP
             )
         """
+        )
+        # Ensure the column exists on older databases
+        cursor.execute(
+            """
+            ALTER TABLE hoorspelen
+            ADD COLUMN IF NOT EXISTS last_modified TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            """
         )
     conn.commit()
 
@@ -331,8 +338,8 @@ def get_input(term: Terminal, prompt: str) -> Optional[str]:
             print("\nInvoer geannuleerd.", end="", flush=True)
             return None
         else:
-            value += key
-            print(key, end="", flush=True)
+            value += str(key)
+            print(str(key), end="", flush=True)
     return value
 
 
@@ -429,8 +436,8 @@ def voeg_toe(conn: Connection, term: Terminal) -> None:
                         value = value[:-1]
                         print("\b \b", end="", flush=True)
                 else:
-                    value += input_key
-                    print(input_key, end="", flush=True)
+                    value += str(input_key)
+                    print(str(input_key), end="", flush=True)
 
             error_message = ""
         elif key == "\x13":  # Ctrl+S to save
@@ -652,7 +659,7 @@ def execute_search(
                     query = sql.SQL(
                         "SELECT * FROM hoorspelen WHERE {} = %s LIMIT %s OFFSET %s"
                     ).format(sql.Identifier(specific_field))
-                    cursor.execute(query, (search_term, limit, offset))
+                    cursor.execute(query, (int(search_term), limit, offset))
                 else:
                     # Use ILIKE for text fields
                     query = sql.SQL(
@@ -672,7 +679,7 @@ def execute_search(
 
                 if search_term.isdigit():
                     conditions.append(sql.SQL("{} = %s").format(sql.Identifier("id")))
-                    params.append(search_term)
+                    params.append(int(search_term))
 
                 query = sql.SQL(
                     "SELECT * FROM hoorspelen WHERE {} LIMIT %s OFFSET %s"
@@ -718,8 +725,8 @@ def zoek_hoorspellen(conn: Connection, term: Terminal) -> None:
                 elif key.is_sequence:
                     continue
                 else:
-                    search_term += key
-                    print(key, end="", flush=True)
+                    search_term += str(key)
+                    print(str(key), end="", flush=True)
 
             if ":" in search_term:
                 parts = search_term.split(":", 1)
@@ -864,8 +871,8 @@ def edit_field(
         elif key.is_sequence:
             continue
         else:
-            new_value += key
-            print(key, end="", flush=True)
+            new_value += str(key)
+            print(str(key), end="", flush=True)
 
     if new_value == "":
         return current_record  # Return the current record index
@@ -936,12 +943,12 @@ def pause(term: Terminal, message: str) -> None:
 def geschiedenis(conn: Connection, term: Terminal) -> None:
     try:
         with conn.cursor() as cursor:
-            cursor.execute("SELECT * FROM hoorspelen ORDER BY id DESC LIMIT 10")
+            cursor.execute("SELECT * FROM hoorspelen ORDER BY id DESC LIMIT 100")
             results = cursor.fetchall()
             results = list(reversed(results))
 
         if not results:
-            print(term.clear())
+            print(term.home + term.clear, end="", flush=True)
             print("Geen hoorspelen gevonden.", end="", flush=True)
             wait_for_enter("Druk op Enter om verder te gaan...")
             return
@@ -1101,7 +1108,7 @@ def geschiedenis(conn: Connection, term: Terminal) -> None:
                         wait_for_enter("Druk op Enter om verder te gaan...")
 
     except Exception as e:
-        print(term.clear())
+        print(term.home + term.clear, end="", flush=True)
         print(f"Er is een fout opgetreden: {e}", end="", flush=True)
         wait_for_enter("Druk op Enter om verder te gaan...")
 
